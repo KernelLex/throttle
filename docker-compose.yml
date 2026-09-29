@@ -1,0 +1,151 @@
+# Throttle — local infrastructure.
+#
+#   docker compose up -d postgres redis elasticsearch   → services only (fast dev loop)
+#   docker compose --profile app up -d                  → everything, including app code
+#
+# The app containers sit behind a profile so the common case (running the API and web
+# with hot reload on the host) does not also build images you are about to replace.
+
+name: throttle
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: throttle-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-throttle}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-throttle_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-throttle}
+      # Deterministic collation so ORDER BY behaves identically on every machine.
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-throttle} -d ${POSTGRES_DB:-throttle}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: throttle-redis
+    restart: unless-stopped
+    # ─────────────────────────────────────────────────────────────────────────
+    # appendonly yes is NOT optional here.
+    #
+    # Redis defaults to RDB snapshots, which can lose the last few seconds of
+    # writes on a hard kill. Our delayed jobs ARE the schedule, so an RDB-only
+    # setup loses scheduled sends on exactly the restart scenario the demo has
+    # to survive. AOF with everysec fsync bounds that loss to ~1 second, and
+    # the DB reconciler on boot closes even that gap.
+    # ─────────────────────────────────────────────────────────────────────────
+    command:
+      - redis-server
+      - --appendonly
+      - 'yes'
+      - --appendfsync
+      - everysec
+      - --maxmemory-policy
+      - noeviction # never evict job data to satisfy a memory cap
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: throttle-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      # Security is disabled for LOCAL DEVELOPMENT ONLY. See docs/04-SECURITY.md for
+      # the production posture (TLS + API keys + network isolation).
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    ports:
+      - '${ELASTICSEARCH_PORT:-9200}:9200'
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ['CMD-SHELL', "curl -fsS http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  # ── Application services (opt in with --profile app) ───────────────────────
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runner
+    container_name: throttle-api
+    profiles: ['app']
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      # Container-internal hostnames override whatever .env says for localhost.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-throttle}:${POSTGRES_PASSWORD:-throttle_dev_password}@postgres:5432/${POSTGRES_DB:-throttle}?schema=public
+      REDIS_URL: redis://redis:6379
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ROLE: api
+    ports:
+      - '${API_PORT:-4000}:4000'
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      elasticsearch: { condition: service_healthy }
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runner
+    container_name: throttle-worker
+    profiles: ['app']
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-throttle}:${POSTGRES_PASSWORD:-throttle_dev_password}@postgres:5432/${POSTGRES_DB:-throttle}?schema=public
+      REDIS_URL: redis://redis:6379
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      # Same image, different entrypoint role. Running the worker as its own process
+      # is what lets you restart the API without interrupting in-flight sends — and
+      # it is what makes `docker compose up --scale worker=3` a real horizontal test.
+      ROLE: worker
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: throttle-web
+    profiles: ['app']
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
+    ports:
+      - '${WEB_PORT:-5173}:80'
+    depends_on: [api]
+
+volumes:
+  postgres-data:
+  redis-data:
+  elasticsearch-data:

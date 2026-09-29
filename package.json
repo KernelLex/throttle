@@ -1,0 +1,42 @@
+{
+  "name": "throttle",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Throttle \u2014 production-grade email job scheduler with BullMQ, Redis, Postgres and Elasticsearch",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "build": "npm run build -w @throttle/core && npm run build -w @throttle/api && npm run build -w @throttle/web",
+    "dev": "npm run dev -w @throttle/core & npm run dev -w @throttle/api & npm run dev -w @throttle/web",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "infra:up": "docker compose up -d postgres redis elasticsearch",
+    "infra:down": "docker compose down",
+    "infra:reset": "docker compose down -v && docker compose up -d postgres redis elasticsearch",
+    "db:migrate": "npm run db:migrate -w @throttle/api",
+    "db:seed": "npm run db:seed -w @throttle/api",
+    "db:studio": "npm run db:studio -w @throttle/api"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.4.3"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true,
+    "@prisma/client@6.19.3": true,
+    "prisma@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "esbuild@0.28.2": true,
+    "msgpackr-extract@3.0.4": true,
+    "esbuild@0.25.12": true
+  }
+}

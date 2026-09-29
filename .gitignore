@@ -1,0 +1,29 @@
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+
+# Env — never commit real secrets. .env.example is the template and IS committed.
+.env
+.env.*
+!.env.example
+
+*.log
+npm-debug.log*
+logs/
+
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Prisma
+apps/api/prisma/*.db
+apps/api/prisma/migrations/dev.db*
+
+# Local infra volumes
+.docker-data/
+uploads/
+tmp/

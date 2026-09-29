@@ -1,0 +1,169 @@
+# Render blueprint — API + worker in ONE service.
+#
+# WHY ONE SERVICE, NOT TWO
+# ------------------------
+# Render's free tier does not offer background workers (they start at Starter, $7/mo),
+# and the free allowance is 750 instance-hours per month across the whole workspace.
+# 24/7 for 31 days is 744 hours — so exactly ONE service can run continuously.
+#
+# `ROLE=both` makes that work: the BullMQ workers run inside the same process that
+# serves HTTP. Production deployments would split them (so the API can restart without
+# interrupting in-flight sends), but for a free-tier demo one process is correct.
+#
+# ⚠️ FREE-TIER SLEEP
+# Free web services spin down after 15 minutes without inbound traffic, and cold start
+# takes roughly a minute. A sleeping scheduler does not send on time.
+#
+# This does NOT lose emails — Postgres is the source of truth and runStartupRecovery()
+# re-enqueues everything on wake, re-spacing any overdue backlog. But sends are late.
+# Keep it awake with an UptimeRobot monitor on /healthz every 5 minutes (see
+# DEPLOYMENT.md). That is infrastructure monitoring, not application scheduling, so it
+# does not touch the brief's no-cron constraint.
+
+services:
+  - type: web
+    name: throttle-api
+    runtime: node
+    plan: free
+    region: oregon
+
+    # Build from the monorepo root: core must compile before the API that imports it.
+    buildCommand: npm ci && npm run build -w @throttle/core && npm run build -w @throttle/api
+    startCommand: npm run start -w @throttle/api
+
+    # Render pings this to decide whether the service is healthy. /healthz, not
+    # /readyz — a temporarily unreachable Elasticsearch must not cause a restart loop.
+    healthCheckPath: /healthz
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # API + worker in one process. See the note above.
+      - key: ROLE
+        value: both
+
+      - key: API_PORT
+        value: 4000
+
+      - key: LOG_LEVEL
+        value: info
+
+      # ── Set these in the Render dashboard ────────────────────────────────
+      # Marked sync:false so Render prompts for them rather than committing
+      # secrets to git.
+
+      # Neon connection string. MUST keep ?sslmode=require.
+      - key: DATABASE_URL
+        sync: false
+
+      # Redis Cloud: redis://default:PASSWORD@host:PORT  (not port 6379)
+      - key: REDIS_URL
+        sync: false
+
+      # Generate each with: openssl rand -hex 32
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: COOKIE_SECRET
+        generateValue: true
+
+      # ⚠️ ENCRYPTION_KEY must be EXACTLY 64 hex characters (32 bytes) for AES-256-GCM,
+      # and Render's generateValue does not guarantee that format — so it is set
+      # manually. It also must NOT change after seeding: it encrypts SMTP passwords,
+      # and rotating it makes existing senders undecryptable.
+      - key: ENCRYPTION_KEY
+        sync: false
+
+      # ── URLs ─────────────────────────────────────────────────────────────
+      # With the Vercel proxy (recommended), BOTH of these are the Vercel domain:
+      # the browser only ever talks to Vercel, which forwards /api to this service.
+      # That keeps everything same-origin, so session cookies work with SameSite=Lax
+      # and CORS is not involved at all.
+      - key: API_BASE_URL
+        sync: false # e.g. https://throttle.vercel.app
+      - key: WEB_BASE_URL
+        sync: false # e.g. https://throttle.vercel.app
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false # e.g. https://throttle.vercel.app
+
+      # 'lax' when proxying through Vercel. Only 'none' if the browser calls this
+      # service directly on a different domain.
+      - key: COOKIE_SAMESITE
+        value: lax
+
+      # ── OAuth ────────────────────────────────────────────────────────────
+      # Redirect URIs registered with Google/Slack must match API_BASE_URL exactly.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: SLACK_CLIENT_ID
+        sync: false
+      - key: SLACK_CLIENT_SECRET
+        sync: false
+      - key: SLACK_SIGNING_SECRET
+        sync: false
+
+      # ── Elasticsearch ────────────────────────────────────────────────────
+      # No free managed option in this stack, so search runs on the Postgres
+      # fallback. The dashboard shows a "degraded mode" banner, which is honest
+      # rather than silently worse.
+      - key: ELASTICSEARCH_URL
+        value: http://localhost:9200
+      - key: ELASTICSEARCH_REQUIRED
+        value: 'false'
+
+      # ── Scheduler tuning ─────────────────────────────────────────────────
+      # Free tier is 0.1 CPU / 512 MB, so concurrency is lowered from the local
+      # default of 5. Correctness does not depend on it — the atomic DB claim and
+      # the Lua limiter do — but 5 parallel SMTP sends on 0.1 CPU adds latency.
+      - key: WORKER_CONCURRENCY
+        value: 3
+      - key: MIN_DELAY_BETWEEN_EMAILS_MS
+        value: 2000
+      - key: MAX_EMAILS_PER_HOUR_PER_SENDER
+        value: 200
+      - key: MAX_EMAILS_PER_HOUR_GLOBAL
+        value: 0
+      - key: MAX_SEND_ATTEMPTS
+        value: 3
+      - key: RETRY_BACKOFF_MS
+        value: 30000
+      - key: JOB_LOCK_TTL_MS
+        value: 120000
+      - key: RECONCILE_INTERVAL_MS
+        value: 60000
+
+      # ── Circuit breaker ──────────────────────────────────────────────────
+      - key: CIRCUIT_FAILURE_THRESHOLD
+        value: 5
+      - key: CIRCUIT_COOLDOWN_MS
+        value: 300000
+      - key: CIRCUIT_SUCCESS_THRESHOLD
+        value: 2
+      - key: CIRCUIT_ROLLING_WINDOW
+        value: 50
+
+      # ── SMTP ─────────────────────────────────────────────────────────────
+      - key: SMTP_AUTO_PROVISION_COUNT
+        value: 3
+      - key: SMTP_POOL_MAX_CONNECTIONS
+        value: 3
+      - key: SMTP_CONNECTION_TIMEOUT_MS
+        value: 15000
+
+      # ── Security ─────────────────────────────────────────────────────────
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 300
+      - key: AUTH_RATE_LIMIT_MAX_REQUESTS
+        value: 10
+      - key: MAX_UPLOAD_BYTES
+        value: 10485760
+      # Leave true. False exposes queue internals — including recipient addresses —
+      # to any signed-in user.
+      - key: BULL_BOARD_REQUIRE_ADMIN
+        value: 'true'

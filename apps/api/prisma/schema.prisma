@@ -1,0 +1,360 @@
+// Throttle — data model.
+//
+// Postgres is the SOURCE OF TRUTH for the schedule. Redis holds the working set
+// (delayed jobs, rate-limit counters, circuit state) and Elasticsearch holds a
+// derived search index. Both can be rebuilt from this database; neither can be
+// rebuilt from the other. That ordering is what makes restart survival tractable:
+// on boot we reconcile Redis against Postgres, never the reverse.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tenancy
+//
+// Every domain row carries a tenantId, and the repository layer injects the
+// filter rather than trusting route handlers to remember it. See
+// apps/api/src/db/tenantScope.ts.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users              User[]
+  senders            Sender[]
+  campaigns          Campaign[]
+  emailJobs          EmailJob[]
+  slackInstallation  SlackInstallation?
+  auditLogs          AuditLog[]
+
+  @@map("tenants")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id        String  @id @default(cuid())
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Google's stable subject claim. Email is NOT the identity key — people change
+  // their primary address, and matching on email invites account-takeover via a
+  // recycled address.
+  googleId  String  @unique
+  email     String  @unique
+  name      String
+  avatarUrl String?
+  role      Role    @default(MEMBER)
+
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  refreshTokens RefreshToken[]
+  campaigns     Campaign[]
+  auditLogs     AuditLog[]
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+// Refresh tokens are stored HASHED, never in plaintext — a database leak must not
+// hand an attacker live sessions.
+//
+// `familyId` implements reuse detection: every rotation keeps the family id. If a
+// token that was already rotated is presented again, the token was stolen (or
+// replayed), so the ENTIRE family is revoked and the user must re-authenticate.
+model RefreshToken {
+  id        String @id @default(cuid())
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String @unique // sha256 of the raw token
+  familyId  String
+
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Senders
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum CircuitState {
+  CLOSED
+  OPEN
+  HALF_OPEN
+}
+
+model Sender {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  label     String
+  fromName  String
+  fromEmail String
+
+  smtpHost String
+  smtpPort Int
+  smtpUser String
+  // AES-256-GCM, stored as iv:authTag:ciphertext hex. Never leaves the server:
+  // SenderDto in @throttle/core has no password field at all, so it cannot be
+  // serialised to the client by accident.
+  smtpPasswordEnc String
+  smtpSecure      Boolean @default(false)
+
+  // Per-sender overrides for the env defaults. This is how the brief's
+  // "configurable, not hardcoded" requirement is met at row level.
+  hourlyLimit Int
+  minGapMs    Int
+
+  isActive Boolean @default(true)
+
+  // Redis holds the authoritative, live circuit state — it must be atomic across
+  // worker processes. These columns are a durable MIRROR so the dashboard still
+  // renders after a Redis flush and so state survives a full infra restart.
+  circuitState        CircuitState @default(CLOSED)
+  circuitOpenedAt     DateTime?
+  consecutiveFailures Int          @default(0)
+  lastSuccessAt       DateTime?
+  lastFailureAt       DateTime?
+  lastError           String?
+
+  totalSent   Int @default(0)
+  totalFailed Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plannedJobs EmailJob[] @relation("PlannedSender")
+  actualJobs  EmailJob[] @relation("ActualSender")
+
+  // One sender per address per tenant — prevents duplicate configs silently
+  // doubling a domain's effective sending rate.
+  @@unique([tenantId, fromEmail])
+  @@index([tenantId, isActive])
+  @@map("senders")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Campaigns
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+model Campaign {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdByUserId String
+  createdBy       User   @relation(fields: [createdByUserId], references: [id])
+
+  name         String
+  subject      String
+  bodyTemplate String @db.Text
+
+  startAt              DateTime
+  minGapMs             Int
+  hourlyLimitPerSender Int
+
+  status CampaignStatus @default(SCHEDULED)
+
+  totalRecipients Int
+  plannedWindows  Int
+  plannedFinishAt DateTime
+
+  // The plan exactly as planSchedule() computed it at creation time, so the UI can
+  // show forecast-vs-actual later. Storing the summary (not the 50k job rows) keeps
+  // this small — the jobs themselves are in email_jobs.
+  plannedWindowSummary Json?
+
+  // Set when the campaign is large enough to be materialised incrementally by the
+  // pump rather than enqueued all at once. Null means fully materialised up front.
+  materializedThrough DateTime?
+
+  // Makes POST /api/campaigns safe to retry: a duplicate key returns the original
+  // campaign instead of creating a second one.
+  idempotencyKey String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  emailJobs EmailJob[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@map("campaigns")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Email jobs — one row per recipient. The unit of scheduling.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum EmailStatus {
+  SCHEDULED // planned, delayed job exists in Redis
+  QUEUED // delay elapsed, waiting for a free worker
+  SENDING // claimed by a worker, SMTP in flight
+  SENT
+  FAILED
+  CANCELLED
+  RESCHEDULED // bounced by a rate limit into a later window
+}
+
+model EmailJob {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  recipientEmail String
+  recipientName  String?
+  // Per-recipient merge variables for subject/body templating.
+  mergeData      Json?
+
+  // Global submission order within the campaign. Preserved across rescheduling so
+  // that a rate-limit bounce does not scramble delivery order.
+  sequenceNo Int
+
+  // Who the planner chose...
+  plannedSenderId String
+  plannedSender   Sender @relation("PlannedSender", fields: [plannedSenderId], references: [id])
+  // ...and who actually sent it. These differ when the circuit breaker rerouted the
+  // send at pickup time. Keeping both makes reroutes visible in the UI and auditable.
+  actualSenderId String?
+  actualSender   Sender? @relation("ActualSender", fields: [actualSenderId], references: [id])
+
+  // Wall-clock hour bucket, matching the Redis rate-limit key exactly.
+  hourWindow  DateTime
+  scheduledAt DateTime
+
+  status   EmailStatus @default(SCHEDULED)
+  attempts Int         @default(0)
+
+  sentAt    DateTime?
+  failedAt  DateTime?
+  lastError String?   @db.Text
+
+  messageId String?
+  // Ethereal preview link — the demonstrable proof a message was really sent.
+  previewUrl String?
+
+  // How many times a rate limit pushed this job into a later window. Surfaced in
+  // the UI and useful for spotting a chronically under-provisioned sender pool.
+  rescheduleCount Int @default(0)
+
+  // ── The double-send guard ────────────────────────────────────────────────
+  // A worker claims a job with:
+  //   UPDATE email_jobs SET status='SENDING', locked_at=now(), locked_by=$worker
+  //   WHERE id=$1 AND status IN ('SCHEDULED','QUEUED','RESCHEDULED') RETURNING *
+  // Zero rows returned means another worker already owns it. `lockedAt` also lets
+  // the reaper recover jobs from a worker that was killed mid-send.
+  lockedAt DateTime?
+  lockedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Last line of duplicate defence, enforced by the database itself: the same
+  // address cannot appear twice in one campaign, however the rows were inserted.
+  @@unique([campaignId, recipientEmail])
+  // The worker's hot query: "what is due, for this tenant, right now".
+  @@index([tenantId, status, scheduledAt])
+  @@index([campaignId, sequenceNo])
+  @@index([status, scheduledAt])
+  @@index([tenantId, status, sentAt])
+  // Powers the reaper's scan for abandoned claims.
+  @@index([status, lockedAt])
+  @@index([plannedSenderId, hourWindow])
+  @@map("email_jobs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Slack
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SlackInstallation {
+  id       String @id @default(cuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  slackTeamId   String
+  slackTeamName String
+  channelId     String
+  channelName   String
+
+  // Both encrypted at rest with AES-256-GCM. A leaked webhook URL lets anyone post
+  // into the customer's channel, so it is treated as a credential, not a URL.
+  webhookUrlEnc String
+  botTokenEnc   String?
+
+  installedByUserId String
+  // Soft-disconnect rather than delete, so reconnecting keeps the audit trail and
+  // so a disconnect is distinguishable from "never connected".
+  isActive Boolean @default(true)
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  disconnectedAt DateTime?
+
+  @@map("slack_installations")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Audit
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action       String // e.g. "campaign.created", "auth.login", "slack.connected"
+  resourceType String?
+  resourceId   String?
+  metadata     Json?
+
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, action])
+  @@map("audit_logs")
+}
