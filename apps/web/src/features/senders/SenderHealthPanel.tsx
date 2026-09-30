@@ -11,6 +11,7 @@
  * precisely where a user needs to notice that something is wrong.
  */
 
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SenderHealthDto } from '@throttle/core';
 import { api } from '../../lib/api';
@@ -24,6 +25,7 @@ import {
   Skeleton,
   useToast,
 } from '../../components/ui';
+import { AddSenderModal } from './AddSenderModal';
 
 /**
  * Circuit state is carried by the GLYPH and the LABEL. Brightness only reinforces
@@ -39,6 +41,7 @@ const CIRCUIT_PRESENTATION = {
 export function SenderHealthPanel() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [adding, setAdding] = useState(false);
 
   const query = useQuery({
     queryKey: ['senders', 'health'],
@@ -62,7 +65,14 @@ export function SenderHealthPanel() {
       <CardHeader
         title="Sender health"
         description="Traffic is routed by remaining budget × reliability. Open circuits are skipped."
+        action={
+          <Button size="sm" variant="secondary" onClick={() => setAdding(true)}>
+            Add sender
+          </Button>
+        }
       />
+
+      <AddSenderModal open={adding} onClose={() => setAdding(false)} />
 
       {query.isLoading ? (
         <div className="space-y-4 p-5">
@@ -81,7 +91,12 @@ export function SenderHealthPanel() {
       ) : (query.data?.length ?? 0) === 0 ? (
         <EmptyState
           title="No senders configured"
-          description="Run `npm run db:seed` to provision Ethereal test senders, or add one via the API."
+          description="Add one to start scheduling. Ethereal senders are provisioned automatically on first sign-in."
+          action={
+            <Button size="sm" variant="secondary" onClick={() => setAdding(true)}>
+              Add sender
+            </Button>
+          }
         />
       ) : (
         <ul className="divide-y divide-line">

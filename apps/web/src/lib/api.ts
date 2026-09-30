@@ -209,6 +209,22 @@ export const api = {
 
   senders: {
     list: () => request<SenderDto[]>('/api/senders'),
+
+    /** ADMIN only. The server verifies the SMTP credentials before saving, so this
+     *  call is slow by design — a bad password fails here rather than at send time. */
+    create: (body: {
+      label: string;
+      fromName: string;
+      fromEmail: string;
+      smtpHost: string;
+      smtpPort: number;
+      smtpUser: string;
+      smtpPassword: string;
+      smtpSecure: boolean;
+      hourlyLimit: number;
+      minGapMs: number;
+    }) => request<SenderDto>('/api/senders', { method: 'POST', body }),
+
     health: () => request<SenderHealthDto[]>('/api/senders/health'),
     resetCircuit: (id: string) =>
       request<{ reset: true }>(`/api/senders/${id}/reset-circuit`, { method: 'POST' }),
