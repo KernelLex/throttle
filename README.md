@@ -47,7 +47,7 @@ preview URL and never delivers them — every Sent row links to the real message
 
 ---
 
-### [Watch the full tour with sound — brag.mp4](brag-output/brag.mp4) &nbsp;&middot;&nbsp; 61 seconds
+### [Watch the narrated tour — brag.mp4](brag-output/brag.mp4) &nbsp;&middot;&nbsp; 61 seconds
 
 ![Throttle — product tour](brag-output/brag.gif)
 

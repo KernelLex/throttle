@@ -75,18 +75,30 @@ counted from when the whole line is on screen.
 
 ## Sound
 
-Written as one piece rather than music with effects laid over it.
+Narration carries the tour; the cue is a bed underneath it, not a score.
 
-- **Bed:** a soft sine pad in A minor, slowly opening — a system idling, not a
-  soundtrack announcing itself.
-- **Pulse:** a muted tick every 0.5s from 3.0s. It *is* the scheduler's cadence.
-  It falls away at the restart beat and returns after — the whole story in one
-  sonic gesture.
-- **Marks:** each bar in the build gets a short blip on A–C–E–A, rising with the
-  bars, so the chart plays as an arpeggio rather than being scored over.
-- **Restart:** near-silence for 400ms, then a single low swell.
-- **Mix:** effects ~14dB under the bed, nothing above −3dBFS, gentle low-pass so
-  nothing is spiky.
+- **Voice:** a 17-line narration, one or two lines per scene, anchored to the scene
+  it describes. Lines are short on purpose — the synthesiser runs about 2.2 words a
+  second, and a line that spills into the next scene is worse than one that ends
+  early and lets the visual land. `work/fit.mjs` re-checks every line against the
+  next line's start and fails loudly if any of them collide.
+- **Bed:** C minor, `i – VI – III – VII`, three times through, sized so the last
+  chord change falls on the cut. A detuned three-voice pad over a sub on the root —
+  slow and warm, a system idling rather than a soundtrack announcing itself.
+- **Pulse:** an eighth-note pluck walking the chord, gapped so it breathes, panned
+  side to side. It is the scheduler's cadence, kept well under the voice.
+- **Marks:** a soft bell on each chord change lands on the scene cut, so the edit is
+  punctuated without a drum hit.
+- **Duck:** the bed drops to 20% under speech, opening 180ms early so no first word
+  is buried, and releasing over 450ms so it does not pump. The envelope is derived
+  from the same timeline that places the voice, so the music cannot rise over a line
+  that moved.
+- **Mix:** the voice gets a presence lift above 1.8kHz — the synthesiser is 22kHz and
+  dull, and a little top makes the words carry without raising the level. The whole
+  mix goes through a soft `tanh` limiter, then two-pass linear loudness
+  normalisation to −15 LUFS with true peak under −1.3 dBFS. In the 300–3400Hz speech
+  band the voice sits 13–16dB above the bed.
+
 
 ## Every frame postable
 
