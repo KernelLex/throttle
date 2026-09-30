@@ -30,7 +30,11 @@ It covers the brief's checklist in order:
 local stack: real Postgres, Redis and Elasticsearch, a real process kill and restart,
 and the rate limiter genuinely deferring jobs. Nothing on screen is a mock-up.
 
-Voice it over using these marks. They are where each section *starts* in that file:
+**The word-for-word narration is in [DEMO-VOICEOVER.md](DEMO-VOICEOVER.md)**, timed to
+these marks and written to fit the runtime. Use that to record; the marks below are
+just the map.
+
+They are where each section *starts* in that file:
 
 | Mark | Section | What is on screen |
 |---|---|---|
