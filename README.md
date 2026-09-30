@@ -719,12 +719,12 @@ introduced — an earlier version passed vacuously, which is recorded in
    Ethereal mailboxes so it is usable immediately. This is safe only because Ethereal
    never delivers mail; a production system would require the user to connect their own
    SMTP credentials before sending anything.
-2. **A failed send consumes its rate-limit slot.** Real providers count connection
+3. **A failed send consumes its rate-limit slot.** Real providers count connection
    attempts, so this is realistic and conservative, but a retried send consumes two slots.
-3. **The reaper does not decrement `attempts`.** A crash mid-send might have happened
+4. **The reaper does not decrement `attempts`.** A crash mid-send might have happened
    *after* SMTP accepted the message; treating it as a free retry risks a duplicate. Worst
    case, an email gets one fewer retry than configured.
-4. **Merge fields are string substitution, not a template engine.** Handlebars/EJS would
+5. **Merge fields are string substitution, not a template engine.** Handlebars/EJS would
    execute code from a user-supplied campaign body — server-side template injection for a
    feature that only needs string replacement.
 
@@ -734,12 +734,13 @@ introduced — an earlier version passed vacuously, which is recorded in
    embedded *newlines* inside quotes do not.
 2. **No campaign editing.** Campaigns can be created and cancelled, not modified.
    Re-planning a partially-sent campaign is a genuinely hard problem.
-3. **Elasticsearch security is disabled in local Docker.** Fine for local dev; production
-   needs TLS + API keys + network isolation.
+3. **Elasticsearch runs with security disabled locally** — under Docker or from the
+   plain zip. Fine for local dev; production needs TLS, API keys and network isolation.
 4. **No E2E browser tests.** Unit tests cover the planner and route security; the
    integration path was verified manually.
-5. **Sender management is API-only in the UI** — seeding creates them, and the dashboard
-   displays health, but there is no add-sender form. The endpoint exists and is ADMIN-gated.
+5. **The compose formatting toolbar is presentational.** The body is stored and sent as
+   plain text. Storing user-supplied HTML is a stored-XSS surface, and a scheduler does
+   not need to take it on to do its job.
 
 **Trade-offs**
 
@@ -750,7 +751,7 @@ introduced — an earlier version passed vacuously, which is recorded in
 | Blind re-enqueue in reconciler | Check each job first | O(1) instead of O(n) round-trips; relies on BullMQ jobId dedup |
 | Prisma + raw SQL for the claim | Pure Prisma | Prisma cannot express the compare-and-swap that prevents double sends |
 | Elasticsearch optional | Hard dependency | Search being down must not stop email from sending |
-| Dark theme only | Light + dark | Matches the product's visual language; tokens are defined so light is a small change |
+| Light theme only | Light + dark | Matches the provided Figma; every colour is a token on `:root`, so a dark set is additive |
 
 ---
 

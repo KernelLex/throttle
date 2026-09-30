@@ -1,20 +1,37 @@
 # Demo video script
 
-A 5-minute recording covering everything the brief asks to see, plus the two features
-that go beyond it.
+The submission is two pieces back to back:
 
-**Target: 4:30.** Leaves margin without rushing.
+| | | |
+|---|---|---|
+| **1** | `brag-output/brag.mp4` | 1:01 — the narrated tour. Plays first, unedited. |
+| **2** | Your screen recording | **4:00** — the live demo scripted below. |
+
+**Total 5:01.** The tour already covers what Throttle is, the Delivery Planner, the
+shared `planSchedule()`, the circuit breaker and the architecture — so **do not
+re-explain any of it.** The four minutes are a live demo against a running system,
+and nothing else.
+
+It covers the brief's checklist in order:
+
+| Brief asks for | Where |
+|---|---|
+| Creating scheduled emails | 0:12 |
+| Dashboard with Scheduled and Sent | 0:55 and 2:20 |
+| Restart scenario | 1:20 |
+| Rate limiting / delay under load | 2:45 |
+| Assumptions, shortcuts, trade-offs | 3:15 |
 
 ---
 
 ## Before you hit record
 
-Run everything **locally**. The deployed instance cannot send email — Render blocks
-outbound SMTP ports on free plans — so the live URL is for showing it deployed, not for
-demonstrating delivery.
+Run everything **locally**. The deployed instance schedules but cannot send — Render
+blocks outbound SMTP on free web services — so the live URL is for showing it
+deployed, not for demonstrating delivery.
 
 ```bash
-# 1. Elasticsearch (if not already running)
+# 1. Elasticsearch
 C:\Users\AMOG\es\elasticsearch-9.5.4\bin\elasticsearch.bat
 
 # 2. API + worker
@@ -24,211 +41,216 @@ npm run dev -w @throttle/api
 npm run dev -w @throttle/web
 ```
 
-Check `http://localhost:4000/readyz` shows all three `ok`.
+`http://localhost:4000/readyz` must show all three `ok`.
 
-**Have open in tabs, in this order:**
+**Seed the Sent tab.** Five minutes before recording, compose a small campaign with
+the start time set to *now* and let it finish. The Sent tab then has real history
+with working Ethereal links and one real Gmail delivery, so it is never empty on
+camera. This is the single most important prep step — without it the dashboard looks
+half-built for the first two minutes.
 
-1. `localhost:5173` — signed out, on the login screen
+**Have open, in this order:**
+
+1. `localhost:5173` — signed in, on the dashboard
 2. `localhost:4000/admin/queues` — Bull Board
-3. Slack, on `#all-throttle`
-4. A terminal running the API, logs visible
-5. A second terminal, in the repo, for the restart
+3. Your Gmail inbox
+4. Slack, on `#all-throttle`
+5. Terminal A — the API, logs visible
+6. Terminal B — in the repo, empty prompt
 
-**The leads file is ready:** `demo/leads.csv`. Your own Gmail is the first line, so the
-first send lands in a real inbox on camera.
+**Use `demo/leads-demo.csv`**, not `leads.csv`. It is 10 usable addresses plus one
+case-variant duplicate and one malformed line, so the parser toast shows real work
+*and* the send finishes inside the four minutes. `leads.csv` has 30 and will still be
+sending when you need the screen back.
 
-It deliberately contains two duplicates and one malformed address, so the upload toast
-reads *"30 addresses detected · 2 duplicates removed · 1 invalid skipped"* rather than a
-bare count — it shows the parser doing real work.
-
-**Turn off notifications.** Nothing kills a demo like a Teams popup.
-
----
-
-## 0:00 — 0:25 · What it is
-
-> "This is Throttle — an email job scheduler built for the ReachInbox assignment.
->
-> It takes a campaign, spreads it across multiple senders under per-sender hourly rate
-> limits, sends over SMTP, and survives restarts without losing or duplicating a single
-> send.
->
-> The thing I want to show first is the part I think is most interesting, because it
-> shapes everything else."
-
-**On screen:** the README, scrolled to the architecture diagram.
+**Turn off notifications.**
 
 ---
 
-## 0:25 — 1:05 · The core design decision
+## 0:00 — 0:12 · Frame it
 
-> "Most schedulers decide rate limiting reactively — a job wakes up, checks a counter,
-> and bounces if it's over the limit. That works, but a thousand jobs wake together, 950
-> bounce, and delivery order is scrambled.
->
-> Throttle inverts that. At schedule time a pure function called `planSchedule` assigns
-> every recipient a sender, an hour window and an exact send time. Those go into Postgres
-> and into BullMQ as delayed jobs.
->
-> At send time the worker re-checks an atomic Redis counter — but that's a *guard*, not
-> the planner. It only fires when reality has drifted from the plan.
->
-> And because `planSchedule` is a pure function in a shared package, the browser imports
-> the same function to draw the forecast. So the chart a user sees before scheduling
-> isn't an estimate of the schedule — it *is* the schedule."
+> "That was the tour. This is the same system running locally, and I'm going to
+> schedule a real campaign, kill the server mid-flight, and show that nothing is lost
+> and nothing sends twice."
 
-**On screen:** `packages/core/src/planner.ts`, then the mermaid diagram showing the
-`planSchedule()` arrow going to both the browser and the server.
+**On screen:** the dashboard, already signed in.
 
 ---
 
-## 1:05 — 1:25 · Login
+## 0:12 — 0:55 · Creating scheduled emails
 
-> "Real Google OAuth — authorization code flow with PKCE, handled entirely on the
-> backend so no secret ever reaches the browser. The session is an httpOnly cookie with
-> a rotating refresh token."
+**Do:** click **Compose**. Subject and a short body.
 
-**Do:** click **Login with Google**, pick your account, land on the dashboard.
-**Point at:** name, email, avatar in the sidebar.
+> "Compose is a full page. Subject, body, and the recipient list."
 
----
+**Do:** **Upload List** → `demo/leads-demo.csv` → point at the toast.
 
-## 1:25 — 2:15 · Compose, and the Delivery Planner
+> "Ten addresses, one duplicate removed, one malformed line skipped. That's parsed in
+> the browser for instant feedback and re-parsed on the server when it's submitted —
+> the browser's count is convenience, never a security boundary."
 
-> "Compose is a full page, matching the Figma."
+**Do:** set **delay `2` seconds**, **hourly limit `50`**.
 
-**Do:** click **Compose**. Fill in subject and body.
+> "Two seconds between sends, fifty an hour."
 
-> "I upload a CSV of leads and it tells me how many addresses it found — parsed in the
-> browser for instant feedback, then re-parsed server-side, because the browser's count
-> is convenience and never a security boundary."
+**Do:** set the **start time to the next whole minute that is at least 90 seconds
+away**. Read it out loud.
 
-**Do:** **Upload List** → pick `demo/leads.csv` → point at the toast:
-*"30 addresses detected · 2 duplicates removed · 1 invalid skipped"*.
+> "And I'll schedule it for 14:32 — about ninety seconds from now. Remember that
+> time."
 
-> "Delay between emails, hourly limit, start time."
+**Do:** drag the hourly limit down to `5` and back to `50`, letting the planner chart
+re-render.
 
-**Do:** set delay `2`, hourly limit `5`, start time about a minute out.
-
-> "And this is the Delivery Planner. It's running that same `planSchedule` function
-> locally, so as I change the hourly limit, the forecast updates — how many windows it
-> takes, how it splits across senders, and exactly when the last email lands."
-
-**Do:** change the hourly limit from 5 to 50 and back. **Let the chart re-render on
-camera** — the live recalculation is the point.
-
-> "With a low limit it spreads across several hour windows. That's the answer to
-> 'what happens when a thousand emails are scheduled for the same time' — they never all
-> come due at once, because they were never planned that way."
+> "The planner recalculates as I change it — that's the same function the server uses,
+> so the forecast isn't an estimate of the schedule, it is the schedule."
 
 **Do:** **Send Later**.
 
 ---
 
-## 2:15 — 2:45 · Scheduled and Sent
+## 0:55 — 1:20 · The dashboard
 
-> "The Scheduled tab fills immediately. Each row shows the recipient, the status pill
-> with its scheduled time, and the campaign."
+> "Ten jobs, all Scheduled, each with its recipient and its exact send time. Nothing
+> has sent yet."
 
 **Do:** switch to Bull Board.
 
-> "And these are the actual BullMQ delayed jobs — this is the live queue dashboard the
-> brief asks for. It's behind admin auth; it exposes recipient addresses and lets you
-> retry or delete jobs, so it isn't something to leave open."
-
-**Do:** back to the dashboard, wait for sends, switch to **Sent**.
-
-> "As they send they move to Sent. Every row links to the Ethereal preview — Ethereal
-> accepts mail and renders it but never delivers, which is what makes it safe to test
-> with. And this one went through a real Gmail sender, so it's actually in my inbox."
-
-**Do:** click a **View ↗** link. Show your inbox if a real one landed.
+> "And these are the actual BullMQ delayed jobs behind them. This is the live queue
+> dashboard — it's behind admin auth, because it exposes recipient addresses and lets
+> you retry or delete jobs."
 
 ---
 
-## 2:45 — 3:20 · Rate limiting and the Slack alert
+## 1:20 — 2:05 · The restart scenario
 
-> "Now the rate limit. I've set the hourly limit deliberately low, and I'm running a
-> script that creates two campaigns competing for the same budget — because with the
-> planner doing its job, a single campaign rarely trips the limiter. The limiter exists
-> to catch drift, and two campaigns planned independently is the realistic source of it."
+This is the requirement they care most about. Do not rush it.
 
-**Do:** run `npx tsx apps/api/src/scripts/testSlackAlert.ts`
+> "Now the hard part. Ten emails are scheduled, none have sent, and I'm going to kill
+> the process."
 
-> "The first campaign consumes the budget. The second finds it gone at send time, so
-> those jobs are deferred into the next window — not dropped, not failed, and in order."
+**Do:** `Ctrl+C` in Terminal A. **Let the silence sit for three or four seconds** —
+the dead prompt on camera is the proof.
 
-**Do:** switch to Slack as the message lands.
+> "Process gone. Queue consumer gone. Restarting."
 
-> "And there's the Slack notification. This came from a real OAuth install — the user
-> clicks Connect Slack, approves, and we store an encrypted webhook per workspace.
->
-> The important detail: fifteen jobs were blocked and this is **one** message. There's a
-> Redis SETNX guard keyed by sender and hour window, so a backlog produces a single alert
-> instead of fifteen. Without it you'd get rate-limited by Slack and the channel muted."
+**Do:** in Terminal A, `npm run dev -w @throttle/api`
 
-**On screen:** the Slack message, showing sender, backlog count, resume time.
+> "On boot it runs a recovery pass before it consumes anything. A reaper returns any
+> job that was stuck mid-send by the crash. A reconciler compares Postgres against
+> Redis and re-queues whatever's missing — because Postgres is the source of truth and
+> Redis is only the working set. And anything whose hour window closed while it was
+> down gets realigned to the current one."
 
----
+**Point at** the log lines as they appear:
 
-## 3:20 — 3:55 · Restart survival
-
-> "The hard requirement: survive a restart without losing or re-sending anything."
-
-**Do:** schedule a small campaign a couple of minutes out. Show the Scheduled rows.
-
-> "There are the pending jobs. Now I kill the worker."
-
-**Do:** `Ctrl+C` in the API terminal. Let it sit for a few seconds.
-
-> "Process gone. Restarting."
-
-**Do:** `npm run dev -w @throttle/api`
-
-> "On boot it runs a recovery pass. A reaper returns any job stuck mid-send by the crash,
-> and a reconciler compares Postgres against Redis and re-queues anything missing —
-> because Postgres is the source of truth and Redis is just the working set.
->
-> If a job came due while it was down, it fires immediately. If it's still in the future,
-> it fires at the original time. And nothing sends twice."
-
-**Point at** the log lines: `Running startup recovery…` → `Startup recovery complete`.
-
-**Do:** let a scheduled email send after the restart. Show it in Sent.
-
-> "Three separate things prevent a double send: BullMQ refuses a duplicate job id, the
-> worker claims each job with an atomic compare-and-swap in Postgres so only one worker
-> can ever transition it, and there's a unique constraint on campaign plus recipient as
-> a last line of defence."
+```
+Running startup recovery…
+Startup recovery complete — future sends will fire at the correct time
+```
 
 ---
 
-## 3:55 — 4:20 · The second advanced feature
+## 2:05 — 2:20 · Still pending
 
-> "One more thing beyond the brief. Instead of round-robin across senders, each one is
-> scored: remaining hourly budget times one minus its recent failure rate. If a sender
-> fails five times in a row its circuit breaker opens, it's taken out of rotation, and
-> traffic reroutes to healthy senders."
+**Do:** back to the dashboard, refresh.
 
-**Do:** open the sender health panel.
-
-> "This actually proved itself by accident. When I deployed to Render, every send started
-> timing out — Render blocks outbound SMTP on free plans. The breaker opened after five
-> consecutive failures, traffic rerouted, and every queued job was deferred rather than
-> failed. The failure path got tested by a real outage rather than a staged one."
+> "Same ten jobs, same scheduled time, still pending. The restart didn't lose them and
+> didn't fire them early."
 
 ---
 
-## 4:20 — 4:30 · Close
+## 2:20 — 2:45 · They send
 
-> "Elasticsearch indexes both scheduled and sent email and degrades to a Postgres query
-> if the cluster is down, so search being unavailable never stops sending.
+The campaign fires at the time you read out at 0:55. Let it happen on camera.
+
+> "And there they go — two seconds apart, in order."
+
+**Do:** switch to the **Sent** tab as rows move across.
+
+> "Every row links to the real message. These went to Ethereal, which accepts and
+> renders mail but never delivers it — that's what makes it safe to test with."
+
+**Do:** click one **View ↗** link. Then switch to Gmail.
+
+> "And this one went through a real Gmail sender over SMTP, so it's actually in my
+> inbox. Same pipeline, real delivery."
+
+---
+
+## 2:45 — 3:15 · Rate limiting under load
+
+**Do:** in Terminal B, immediately:
+
+```bash
+npx tsx apps/api/src/scripts/testSlackAlert.ts
+```
+
+Talk while it runs — it takes fifteen to thirty seconds.
+
+> "One campaign planned properly almost never trips the limiter, because the planner
+> already spread it under the budget. The limiter is there to catch drift — and the
+> realistic source of drift is two campaigns planned independently into the same hour
+> window, each unaware of the other.
 >
-> No cron anywhere — not even BullMQ's `repeat` option, which is cron-backed. Recurring
-> work is a delayed job that re-enqueues itself.
+> So this drops every sender to two an hour, then creates exactly that: campaign A
+> fills the budget, campaign B plans into the same window and finds it gone at send
+> time."
+
+**Point at** the live counters: `sent … deferred … pending …`
+
+> "Deferred, not dropped and not failed. They roll into the next window, in order."
+
+**Do:** switch to Slack.
+
+> "And one Slack message. The alert itself names how many are waiting and when they
+> resume — read that number off the screen, because that many jobs were blocked and
+> this is still **one** notification. There's a Redis SETNX guard keyed by sender and
+> hour window, so a backlog produces a single message instead of one per job. Without
+> it you'd get rate-limited by Slack and somebody would mute the channel."
+
+---
+
+## 3:15 — 3:55 · Assumptions, shortcuts and trade-offs
+
+Slow down here. This section is what separates a demo from an engineering submission.
+
+> "Finally, the honest part.
 >
-> The README has the architecture, the trade-offs, and a devlog of what broke and how I
-> fixed it. Thanks for watching."
+> The central trade-off is planning at schedule time instead of reacting at send time.
+> It costs a bigger write when a campaign is created, but it's what makes the forecast
+> truthful and keeps delivery in order.
+>
+> Elasticsearch is optional by design — if the cluster is down, search falls back to
+> Postgres, because search being unavailable must never stop email from sending.
+>
+> Two shortcuts worth naming. Workspaces are keyed by email domain, so everyone at a
+> company shares one — a real product needs explicit invitations. And the formatting
+> toolbar in compose is presentational: the body is stored and sent as plain text,
+> because storing user-supplied HTML is a stored-XSS surface a scheduler doesn't need.
+>
+> And two deployment limits. Render blocks outbound SMTP on free plans, so the hosted
+> instance schedules but can't send — which is why this demo is local. And there's no
+> free managed Elasticsearch tier, so search on the live URL runs that Postgres
+> fallback. The dashboard labels it rather than hiding it.
+>
+> Everything else — the architecture, the security posture, and a devlog of what broke
+> and how I fixed it — is in the README. Thanks for watching."
+
+---
+
+## If something goes wrong
+
+- **The campaign fires during the restart.** Not a failure — say so and keep going:
+  *"Some of those went out while it was restarting, which is the same point — it
+  picked up exactly where it left off."*
+- **Sends are slow to appear.** Refresh the Sent tab. Check Terminal A for SMTP
+  errors; if a sender's circuit has opened, say so — it's a feature, not a fault.
+- **Slack doesn't arrive.** The script prints why. Most often the worker isn't running
+  or the alert was already debounced this hour window — the script clears the debounce
+  itself, so re-running is safe.
+- **You overrun.** Cut the Bull Board glance and the Gmail inbox. Never cut the
+  restart or the trade-offs.
 
 ---
 
@@ -236,27 +258,29 @@ camera** — the live recalculation is the point.
 
 Cut in this order:
 
-1. **0:25–1:05 design section** — compress to one sentence, let the chart make the point
-2. **The circuit breaker** — mention it, skip the panel
-3. **Bull Board** — a two-second glance is enough
+1. **The hourly-limit drag at 0:45** — the tour already showed the planner reacting
+2. **Bull Board** — a two-second glance is enough
+3. **The Ethereal preview click** — saying it links to the real message is enough
 
-**Never cut:** the Delivery Planner recalculating, the Slack message arriving, or the
-restart. Those are the three the brief cares most about.
+**Never cut:** the restart, the Slack message, or the trade-offs. Those are three of
+the five things the brief explicitly asks for.
 
 ---
 
 ## Things worth saying out loud
 
-These are the details that read as judgement rather than feature-listing:
+The details that read as judgement rather than feature-listing:
 
 - **"The browser's count is convenience, never a security boundary."**
-- **"One message, fifteen blocked jobs."**
 - **"Postgres is the source of truth; Redis is the working set."**
 - **"Deferred, not dropped."**
-- **"Not even BullMQ's `repeat` — it's cron-backed."**
+- **"One message, however many blocked jobs."**
+- **"The forecast isn't an estimate of the schedule — it is the schedule."**
 
 ## Things to avoid
 
+- Don't re-explain anything the tour video already covered.
 - Don't read the README aloud. Show the product working.
-- Don't apologise for what isn't finished. State limitations plainly if they come up.
-- Don't rush the Delivery Planner. It's the strongest thing here; give it the time.
+- Don't apologise for what isn't finished. State limitations plainly — that's what
+  the trade-offs section is for.
+- Don't fill the restart silence. The dead prompt is the evidence.
