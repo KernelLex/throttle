@@ -179,6 +179,56 @@ function buildMessage(data: NotificationJobData): { text: string; blocks: SlackB
       };
     }
 
+    case 'SENDERS_EXHAUSTED': {
+      const senders = (p['senders'] ?? []) as { label: string; state: string; lastError: string | null }[];
+      const backlog = Number(p['backlogCount'] ?? 0);
+      const open = Number(p['openCircuits'] ?? 0);
+      const resumesAt = Number(p['resumesAt'] ?? Date.now());
+
+      // Name every sender and its state. When nothing can send, the first question
+      // is always "which ones, and why" — answering it in the alert saves a trip
+      // to the dashboard.
+      const detail = senders
+        .map((s) => `• *${s.label}* — ${s.state}${s.lastError ? `: \`${s.lastError}\`` : ''}`)
+        .join('\n');
+
+      return {
+        text: '\u{1F6D1} No senders available — nothing can be sent',
+        blocks: [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text:
+                `*\u{1F6D1} No senders available*\n` +
+                `All ${senders.length} sender${senders.length === 1 ? '' : 's'} are out of budget or ` +
+                `circuit-open${open > 0 ? ` (${open} paused)` : ''}. Nothing is going out right now.`,
+            },
+          },
+          ...(detail ? [{ type: 'section', text: { type: 'mrkdwn', text: detail } }] : []),
+          {
+            type: 'section',
+            fields: [
+              { type: 'mrkdwn', text: `*Emails waiting*\n${backlog.toLocaleString()}` },
+              {
+                type: 'mrkdwn',
+                text: `*Next attempt*\n${formatDuration(Math.max(0, resumesAt - Date.now()))}`,
+              },
+            ],
+          },
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: 'Nothing has been dropped — every job is deferred and retried in order.',
+              },
+            ],
+          },
+        ],
+      };
+    }
+
     case 'CIRCUIT_OPENED': {
       const label = String(p['senderLabel'] ?? 'A sender');
       const email = String(p['senderEmail'] ?? '');

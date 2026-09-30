@@ -26,6 +26,19 @@ preview URL and never delivers them — every Sent row links to the real message
 > take up to a minute** while it wakes. Nothing is lost while it sleeps: the scheduler
 > reconciles against Postgres on boot and re-spaces any overdue backlog.
 >
+> **The deployed instance schedules but cannot send.** Render blocks outbound traffic
+> to SMTP ports 25, 465 and 587 on free web services (since 26 Sept 2025), and blocks
+> them silently — the connection is dropped rather than refused, so every send times
+> out. Campaigns still plan, queue, rate-limit, defer and survive restarts there; only
+> the SMTP hop fails. Sending is demonstrated against a local instance, where it works
+> against both Ethereal and a real Gmail sender. Any paid Render instance unblocks 465
+> and 587 with no code change.
+>
+> Worth noting what this accidentally proved: when every sender started timing out, the
+> circuit breaker opened one after five consecutive failures, traffic was rerouted, and
+> all queued jobs were deferred rather than dropped. The failure path was exercised by a
+> real outage rather than a staged one.
+>
 > **Search on the live URL runs the Postgres fallback**, not Elasticsearch — there is no
 > free managed Elasticsearch tier in 2026 (Bonsai starts at $15/mo; Elastic Cloud is a
 > 14-day trial). The indexing and search code is complete and is demonstrated against a

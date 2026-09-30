@@ -83,6 +83,10 @@ export interface SearchIndexJobData {
 
 export type NotificationKind =
   | 'RATE_LIMIT_HIT'
+  /** No sender is eligible at all — every one is out of budget or circuit-open.
+   *  The most serious state the scheduler can be in, and therefore the one that
+   *  most needs surfacing. */
+  | 'SENDERS_EXHAUSTED'
   | 'CIRCUIT_OPENED'
   | 'CIRCUIT_RECOVERED'
   | 'CAMPAIGN_COMPLETED';

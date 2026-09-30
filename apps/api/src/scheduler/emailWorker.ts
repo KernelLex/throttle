@@ -51,7 +51,11 @@ import type { PoolSender } from '../mailer/transport.js';
 import { enqueueNotification, enqueueSearchIndex, type SendEmailJobData } from '../queues/index.js';
 import { acquireSendSlot, getUsageForSenders, releaseSendSlot } from './rateLimiter.js';
 import { recordSendResult, selectHealthiestSender } from './senderHealth.js';
-import { shouldNotifyRateLimit, shouldNotifyCircuitChange } from './notificationGuards.js';
+import {
+  shouldNotifyCircuitChange,
+  shouldNotifyRateLimit,
+  shouldNotifySendersExhausted,
+} from './notificationGuards.js';
 
 const log = createLogger('email-worker');
 
@@ -255,6 +259,38 @@ export function createEmailWorker(): Worker<SendEmailJobData> {
             lastError: 'All senders unavailable (rate limited or circuit open).',
           },
         });
+
+        // Nothing can send at all. This is the most serious state the scheduler
+        // reaches, and until now it was the only one that stayed silent — the
+        // per-sender limit alert below never fires here, because execution never
+        // reaches the rate limiter.
+        if (await shouldNotifySendersExhausted(tenantId)) {
+          const [backlog, senderStates] = await Promise.all([
+            prisma.emailJob.count({
+              where: { tenantId, status: { in: ['SCHEDULED', 'QUEUED', 'RESCHEDULED'] } },
+            }),
+            prisma.sender.findMany({
+              where: { tenantId, isActive: true },
+              select: { label: true, circuitState: true, lastError: true },
+            }),
+          ]);
+
+          await enqueueNotification({
+            kind: 'SENDERS_EXHAUSTED',
+            tenantId,
+            payload: {
+              senderCount: senderStates.length,
+              openCircuits: senderStates.filter((s) => s.circuitState === 'OPEN').length,
+              backlogCount: backlog,
+              resumesAt: Date.now() + delayMs,
+              senders: senderStates.map((s) => ({
+                label: s.label,
+                state: s.circuitState,
+                lastError: s.lastError?.slice(0, 160) ?? null,
+              })),
+            },
+          });
+        }
 
         jobLog.warn({ delayMs }, 'No sender available — deferring to next window');
         await job.moveToDelayed(Date.now() + delayMs, token);

@@ -24,6 +24,7 @@
  */
 
 import {
+  REDIS_PREFIX,
   SLACK_DEBOUNCE_TTL_SECONDS,
   hourWindowKey,
   slackCircuitDebounceKey,
@@ -76,6 +77,27 @@ export async function shouldNotifyCircuitChange(
     return result === 'OK';
   } catch (err) {
     log.warn({ err, senderId }, 'Circuit debounce check failed — allowing notification');
+    return true;
+  }
+}
+
+/**
+ * True for exactly one caller per (tenant, hour window) when NO sender can send.
+ *
+ * Keyed by tenant rather than by sender: the condition is "nothing can go out at
+ * all", which is one fact about the workspace, not one per sender. Alerting per
+ * sender would send four messages describing the same outage.
+ */
+export async function shouldNotifySendersExhausted(
+  tenantId: string,
+  now = Date.now(),
+): Promise<boolean> {
+  const key = `${REDIS_PREFIX}:slack:exhausted:${tenantId}:${hourWindowKey(now)}`;
+  try {
+    const result = await redis.set(key, '1', 'EX', SLACK_DEBOUNCE_TTL_SECONDS, 'NX');
+    return result === 'OK';
+  } catch (err) {
+    log.warn({ err, tenantId }, 'Exhausted-senders debounce failed — allowing notification');
     return true;
   }
 }
