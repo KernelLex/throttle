@@ -32,7 +32,20 @@ import type {
   SlackConnectionStatus,
 } from '@throttle/core';
 
-const API_URL = import.meta.env['VITE_API_URL'] ?? 'http://localhost:4000';
+/**
+ * Base URL for API calls.
+ *
+ * Production defaults to '' (relative), NOT to localhost. The deployed frontend
+ * proxies /api to the backend (see vercel.json), so relative paths are correct and
+ * keep every request same-origin — which is what lets session cookies work with
+ * SameSite=Lax instead of being blocked as cross-site.
+ *
+ * Defaulting to localhost here would silently produce a production bundle that calls
+ * the developer's own machine. Setting VITE_API_URL explicitly overrides this, but
+ * the safe behaviour must not depend on remembering to set it.
+ */
+const API_URL =
+  import.meta.env['VITE_API_URL'] ?? (import.meta.env.DEV ? 'http://localhost:4000' : '');
 
 const CSRF_COOKIE = 'throttle_csrf';
 const CSRF_HEADER = 'x-csrf-token';
