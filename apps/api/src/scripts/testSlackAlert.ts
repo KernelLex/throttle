@@ -29,7 +29,7 @@
 import '../loadEnv.js';
 import { hourWindowKey, rateLimitKey, slackDebounceKey } from '@throttle/core';
 import { prisma } from '../lib/prisma.js';
-import { redis } from '../lib/redis.js';
+import { closeRedis, redis } from '../lib/redis.js';
 import { createCampaign } from '../services/campaignService.js';
 import { getSlackStatus } from '../slack/service.js';
 
@@ -178,6 +178,11 @@ main()
     process.exit(1);
   })
   .finally(async () => {
+    // lib/redis.ts opens THREE connections (general, BullMQ, subscriber).
+    // Disconnecting only one leaves the other two holding the event loop open, so
+    // the script prints its result and then hangs forever. closeRedis() quits all
+    // three; the explicit exit covers anything else still registered.
     await prisma.$disconnect();
-    redis.disconnect();
+    await closeRedis();
+    process.exit(process.exitCode ?? 0);
   });

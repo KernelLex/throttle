@@ -17,7 +17,7 @@ import { randomBytes } from 'node:crypto';
 import { OAUTH_STATE_TTL_SECONDS, oauthStateKey } from '@throttle/core';
 import { env, slackOAuthEnabled, slackRedirectUri } from '../config.js';
 import { prisma } from '../lib/prisma.js';
-import { redis } from '../lib/redis.js';
+import { closeRedis, redis } from '../lib/redis.js';
 
 async function main(): Promise<void> {
   if (!slackOAuthEnabled) {
@@ -69,6 +69,11 @@ main()
     process.exit(1);
   })
   .finally(async () => {
+    // lib/redis.ts opens THREE connections (general, BullMQ, subscriber).
+    // Disconnecting only one leaves the other two holding the event loop open, so
+    // the script prints its result and then hangs forever. closeRedis() quits all
+    // three; the explicit exit covers anything else still registered.
     await prisma.$disconnect();
-    redis.disconnect();
+    await closeRedis();
+    process.exit(process.exitCode ?? 0);
   });
