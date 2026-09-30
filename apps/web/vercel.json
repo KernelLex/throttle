@@ -12,6 +12,10 @@
     {
       "source": "/admin/:path*",
       "destination": "https://throttle-api-9jxt.onrender.com/admin/:path*"
+    },
+    {
+      "source": "/((?!api/|admin/|assets/|favicon).*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
