@@ -372,10 +372,10 @@ the consequences were worst. The branches worth auditing are the ones that only 
 
 ## Open items
 
-- **The full schedule → send → restart cycle has not been driven end to end.** All code
-  typechecks and unit tests pass, and the infrastructure is verified independently
-  (health, proxy, OAuth redirect, auth guards), but no run has gone from compose through
-  to a sent message.
+- ~~The full schedule → send → restart cycle has not been driven end to end.~~
+  **Closed.** Campaigns have been scheduled and sent, a real Gmail delivery reached an
+  inbox, a forced rate-limit hit delivered a live Slack message, and the circuit breaker
+  opened and rerouted under an unplanned SMTP outage.
 - **No end-to-end browser test** for the login → compose → schedule flow.
 - **Campaign pump** (incremental materialisation beyond 5,000 recipients) is wired into
   the queue and config, but its handler is a stub. Campaigns below the threshold are

@@ -40,43 +40,33 @@ typecheck        all 3 packages clean (strict + noUncheckedIndexedAccess)
 web build        703 modules, 2.57s
 ```
 
-### Not finished (honest list)
+### Verified end to end
 
-- **Campaign pump handler is a stub.** Queue, config and column exist; campaigns are
-  currently materialised in full regardless of size. Fine to the 50k cap (~25 MB Redis);
-  it is the first thing to do for the next order of magnitude.
-- **The schedule → send → restart cycle has not been driven end to end yet.** Infra is
-  live and verified (health, proxy, OAuth redirect, auth guards), but nobody has clicked
-  through compose → schedule → sent. That is the next thing to do.
-- **No E2E browser test** for login → compose → schedule.
-- **No add-sender form** in the UI. The endpoint exists and is ADMIN-gated; seeding
-  creates senders and the dashboard shows their health.
+- **Google OAuth** — sign-in works on the deployed URL and locally.
+- **Campaign scheduling** — campaigns plan, persist and enqueue; jobs fire on time.
+- **Real SMTP delivery** — a Gmail sender delivers to a real inbox; Ethereal senders
+  render at preview URLs, linked from every Sent row.
+- **Rate limiting** — a forced hourly-limit hit deferred 15 jobs and dropped none.
+- **Slack alert** — a real message was delivered to `#all-throttle` on that hit
+  (`kind: RATE_LIMIT_HIT`, `delivered: true`). One message for 15 blocked jobs,
+  which is the SETNX debounce working.
+- **Circuit breaker** — opened after five consecutive SMTP failures during an
+  unplanned outage; Redis and Postgres agreed on the state and traffic rerouted.
+- **Elasticsearch** — index created against a local 9.5.4 cluster; scheduled and sent
+  email both indexed.
 
-## The one idea that explains the whole design
+### Known limitations
 
-> **Plan at schedule time. Guard at send time.**
+- **The deployed instance cannot send email.** Render blocks outbound SMTP ports
+  (25/465/587) on free web services, silently. Scheduling, queueing, rate limiting,
+  deferral and restart recovery all work there; only the SMTP hop fails. Any paid
+  instance unblocks it with no code change. Sending is demonstrated locally.
+- **Search on the deployed URL uses the Postgres fallback.** There is no free managed
+  Elasticsearch tier; the code path is complete and demonstrated against a local cluster.
+- **Campaign pump handler is a stub.** Campaigns are materialised in full up front,
+  which covers every size up to the 50k cap.
+- **No add-sender UI for MEMBERs.** Only workspace ADMINs can add a sending identity.
 
-Most implementations decide rate limiting reactively: a job wakes up, checks a counter,
-and bounces if it is over the limit. That works, but it thundering-herds (1,000 jobs
-wake, 950 bounce), scrambles ordering, and makes any "forecast" feature a lie, because
-reality is only decided at runtime.
-
-Throttle inverts it:
-
-1. **At schedule time**, `planSchedule()` deterministically assigns every recipient a
-   sender, an hour window and an exact `scheduledAt`. Those go into Postgres, and into
-   BullMQ as delayed jobs.
-2. **At send time**, the worker re-checks an atomic Redis token bucket. This is a
-   *guard*, not a planner — it only fires when reality has drifted from the plan
-   (a retry, a circuit-breaker reroute, a second campaign sharing a sender).
-
-Two things fall out of this for free:
-
-- **The Delivery Planner is honest.** `planSchedule()` lives in `packages/core` and is
-  imported by both the API and the React compose form. The forecast the user sees is
-  produced by the exact function that does the scheduling — not an approximation of it.
-- **Ordering survives throttling.** Every job carries a `sequenceNo` that is preserved
-  across reschedules.
 
 ---
 

@@ -598,7 +598,7 @@ read-modify-write and lose a state change.
 | Emails per hour, per sender | ✅ | Atomic Lua token bucket |
 | Multi-worker / multi-instance safe | ✅ | All check-and-increment in Lua |
 | Never drop jobs on limit | ✅ | `moveToDelayed()`, no attempt consumed |
-| Slack OAuth + live alert on limit | ✅ | [`slack/service.ts`](apps/api/src/slack/service.ts), debounced |
+| Slack OAuth + live alert on limit | ✅ **verified live** | [`slack/service.ts`](apps/api/src/slack/service.ts) — real message delivered, debounced |
 | Slack disconnect / reconnect | ✅ | Soft-deactivate; read per-notification, no redeploy |
 
 ### Frontend
