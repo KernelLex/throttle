@@ -12,7 +12,22 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+
+  // Runtime connections. On Neon this should be the POOLED endpoint (host contains
+  // `-pooler`): PgBouncer multiplexes many short-lived connections onto few Postgres
+  // backends, which is what lets several API/worker instances run without exhausting
+  // the connection limit.
+  url = env("DATABASE_URL")
+
+  // Migrations and introspection. MUST be the DIRECT (unpooled) endpoint.
+  //
+  // Prisma Migrate takes session-level advisory locks and issues DDL like CREATE TYPE
+  // for enums. PgBouncer in transaction mode does not hold session state across
+  // statements, so those fail — usually with a confusing "prepared statement already
+  // exists" or an advisory-lock timeout rather than anything mentioning pooling.
+  //
+  // Falls back to DATABASE_URL when unset, so a plain local Postgres needs no extra config.
+  directUrl = env("DIRECT_URL")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

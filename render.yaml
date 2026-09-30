@@ -25,7 +25,11 @@ services:
     name: throttle-api
     runtime: node
     plan: free
-    region: oregon
+    # Keep this in the SAME region as your Neon database. Every send does several
+    # round-trips (claim, rate-limit check, status write); a cross-continent hop
+    # adds ~200ms to each one and compounds under load.
+    # Render free regions: oregon | ohio | virginia | frankfurt | singapore
+    region: singapore
 
     # Build from the monorepo root: core must compile before the API that imports it.
     buildCommand: npm ci && npm run build -w @throttle/core && npm run build -w @throttle/api
