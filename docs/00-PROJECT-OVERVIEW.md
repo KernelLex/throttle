@@ -28,6 +28,9 @@ Built for the ReachInbox full-stack assignment.
 | 9 | Frontend | ✅ Done — dashboard, compose, Delivery Planner, health panel |
 | 10 | Hardening & docs | ✅ Done |
 
+**Deployed:** <https://throttle-delta.vercel.app> (Vercel) → `throttle-api-9jxt.onrender.com`
+(Render) → Neon Postgres + Redis Cloud, all in Singapore.
+
 **Verification at last run:**
 
 ```
@@ -42,9 +45,9 @@ web build        703 modules, 2.57s
 - **Campaign pump handler is a stub.** Queue, config and column exist; campaigns are
   currently materialised in full regardless of size. Fine to the 50k cap (~25 MB Redis);
   it is the first thing to do for the next order of magnitude.
-- **No end-to-end run against live infra yet** — Docker Desktop was not installed on the
-  dev machine. All code typechecks and unit tests pass; the schedule → restart → send
-  cycle needs one verification pass once infra is up.
+- **The schedule → send → restart cycle has not been driven end to end yet.** Infra is
+  live and verified (health, proxy, OAuth redirect, auth guards), but nobody has clicked
+  through compose → schedule → sent. That is the next thing to do.
 - **No E2E browser test** for login → compose → schedule.
 - **No add-sender form** in the UI. The endpoint exists and is ADMIN-gated; seeding
   creates senders and the dashboard shows their health.

@@ -277,6 +277,46 @@ anyone noticing.
 
 ---
 
+## 9. Every new workspace had zero senders
+
+**Severity: high — the deployed app looked broken to anyone but the seeder.**
+
+**What happened.** Deployment was green: health checks passing, both OAuth providers
+enabled, the Vercel→Render proxy forwarding correctly. Then a question surfaced it —
+*"if I log in, can the judges still use it?"*
+
+Checking the data:
+
+```
+"Demo Workspace"        users: 0   senders: 3
+"amogh p's workspace"   users: 1   senders: 0
+```
+
+The seed script creates senders inside a `Demo Workspace` tenant. Real tenants are
+created on first login, keyed by email domain. **Those two never meet.** So every real
+user — including the developer — landed on a dashboard with no senders, unable to
+schedule anything, with no obvious next step.
+
+**Why it survived so long.** Every layer tested green in isolation. The seed worked. The
+login worked. Tenant isolation worked *correctly* — it was isolating the user from the
+seeded data exactly as designed. Nothing was broken; two correct behaviours simply did
+not compose.
+
+**Fix.** `ensureTenantHasSenders()` provisions Ethereal mailboxes for any workspace that
+has none, called from the OAuth callback. It is a no-op once a workspace has senders, so
+it fires exactly once, and it never throws — a provisioning failure must degrade to "no
+senders yet", never to "cannot sign in".
+
+Plus `backfillSenders.ts` to repair existing data: it provisioned senders for the real
+workspace and deleted the orphaned `Demo Workspace` whose senders nobody could reach.
+
+**Lesson.** Integration bugs live in the gaps between correct components. Seeding and
+tenant creation were each right; nobody had asked whether a *new user* could actually
+use the product. "Does a first-time visitor reach a working state?" is a test in its own
+right, and green health checks say nothing about it.
+
+---
+
 ## Open items
 
 - **Docker Desktop is not installed** on the development machine, so the full

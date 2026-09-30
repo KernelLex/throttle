@@ -7,6 +7,10 @@ of it.
 
 Built for the ReachInbox full-stack assignment.
 
+**Live:** <https://throttle-delta.vercel.app> · sign in with any Google account —
+each one gets its own isolated workspace with three working Ethereal senders
+provisioned automatically.
+
 ```
 ┌──────────┐   POST /campaigns   ┌─────────────┐   delayed jobs   ┌────────┐
 │  React   │ ──────────────────▶ │   Express   │ ───────────────▶ │ BullMQ │
@@ -153,7 +157,12 @@ all of them — that is the point of doing the check in Lua rather than in Node.
 **Tenant assignment:** users are grouped into a workspace by email domain, and the first
 user in a workspace becomes its `ADMIN`. Public domains (gmail.com, outlook.com, …) get
 a *private* workspace per user, so signing in with a personal address never drops you
-into a shared workspace with strangers. See
+into a shared workspace with strangers.
+
+**This means anyone can sign in and use the app immediately.** One person being ADMIN of
+their own workspace does not lock anyone else out — each Google account gets its own
+isolated workspace, and **three Ethereal senders are provisioned automatically on first
+login** so there is nothing to configure before scheduling. See
 [trade-offs](#assumptions-shortcuts-and-trade-offs).
 
 ### Slack (required for the rate-limit notification)
@@ -539,6 +548,10 @@ introduced — an earlier version passed vacuously, which is recorded in
    user becomes ADMIN. Public domains get a private workspace each. *A real product needs
    explicit invitations* — domain auto-join means anyone who can get an address at the
    domain joins the workspace.
+2. **Senders are auto-provisioned on first login.** Every new workspace gets three
+   Ethereal mailboxes so it is usable immediately. This is safe only because Ethereal
+   never delivers mail; a production system would require the user to connect their own
+   SMTP credentials before sending anything.
 2. **A failed send consumes its rate-limit slot.** Real providers count connection
    attempts, so this is realistic and conservative, but a retried send consumes two slots.
 3. **The reaper does not decrement `attempts`.** A crash mid-send might have happened

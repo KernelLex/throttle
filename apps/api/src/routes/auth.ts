@@ -35,6 +35,7 @@ import { prisma } from '../lib/prisma.js';
 import { getAuth, requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/validate.js';
 import { getSlackStatus } from '../slack/service.js';
+import { ensureTenantHasSenders } from '../services/senderProvisioning.js';
 
 const log = createLogger('auth-routes');
 export const authRouter = Router();
@@ -198,6 +199,11 @@ authRouter.get(
       const stored = await consumeState(state);
       const profile = await exchangeCodeForProfile(code, stored.codeVerifier);
       const user = await findOrCreateUser(profile);
+
+      // A workspace with no senders cannot schedule anything, so a brand-new user
+      // would land on a dashboard that looks broken. This is a no-op once the
+      // workspace has senders, and never throws — see senderProvisioning.ts.
+      await ensureTenantHasSenders(user.tenantId);
 
       const accessToken = signAccessToken({
         sub: user.id,
