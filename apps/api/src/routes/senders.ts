@@ -263,7 +263,8 @@ sendersRouter.patch(
 );
 
 // ── POST /api/senders/:id/reset-circuit ───────────────────────────────────────
-// Manual override for "I've fixed the credentials, don't make me wait out the cooldown".
+// Manual override for when the credentials have been fixed and waiting out the
+// cooldown is pure friction.
 
 sendersRouter.post(
   '/:id/reset-circuit',

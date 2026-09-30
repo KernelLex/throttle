@@ -37,7 +37,7 @@ and a five-second build. Not worth the config surface.
 | **Express 4.21** | Required by the brief. Deliberately 4.x, not 5.x: `@bull-board/express` and several middleware packages still target 4, and this project's value is not in being on the newest major. |
 | **BullMQ 5.34** | Required by the brief. **`repeat:` is never used** — it is cron-expression-backed and the brief forbids cron. Recurring work uses self-chaining delayed jobs. |
 | **ioredis 5.4** | BullMQ's expected client, and the one that supports `defineCommand()` for registering Lua scripts as first-class commands with automatic `EVALSHA` caching. The rate limiter depends on that. |
-| **Prisma 6.1** | Best-in-class migrations and generated types. **Not used for one thing:** the atomic job claim is raw SQL, because Prisma cannot express `UPDATE ... WHERE <status guard> RETURNING *` and that statement is what prevents double sends. |
+| **Prisma 6.1** | Mature migration tooling and generated types. **Not used for one thing:** the atomic job claim is raw SQL, because Prisma cannot express `UPDATE ... WHERE <status guard> RETURNING *` and that statement is what prevents double sends. |
 | **PostgreSQL 16** | Source of truth. Chosen over MySQL for partial indexes, `RETURNING` on `UPDATE`, and native JSONB for the stored plan summary. |
 | **Zod 3.24** | Validates request bodies *and* the environment at boot. Shared with the frontend, so the form shows the same error the API would return. |
 | **Nodemailer 6.9** | The SMTP client for Node, and it has first-class Ethereal support — `createTestAccount()` provisions a throwaway mailbox, which is what makes `npm run db:seed` need zero manual setup. |

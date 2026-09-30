@@ -199,9 +199,9 @@ gap, a single sender needs *one* send every 18 seconds. Concurrency exists to se
 
 ---
 
-## What I would do first with more time
+## Next steps, in order of value
 
-1. **Finish the campaign pump.** The single change that unlocks the next order of magnitude.
+1. **Finish the campaign pump.** The one change required before the next order of magnitude.
 2. **Fix the N+1 in the campaign list.** Small, and it is the first thing to bite in normal use.
 3. **Integration tests against real Postgres/Redis** for the full schedule → restart → send
    cycle. Currently verified by unit tests and manual runs; this is the highest-value

@@ -35,7 +35,7 @@ fact drives three others:
 > **Scheduled email is indexed at creation, not at send.** The brief requires both
 > sent *and* scheduled email to be searchable, and indexing only on send would
 > leave the entire pending backlog invisible — which is the half a user is most
-> likely to search for ("did I already queue this address?").
+> likely to search for — checking whether an address is already queued.
 >
 > A campaign of 50,000 recipients enqueues **one** campaign-level job, not 50,000
 > single-document jobs.
@@ -168,7 +168,7 @@ npm run es:reindex -w @throttle/api
 
 ---
 
-## What I would change with more time
+## Known gaps
 
 - **Time-based indices** (`throttle-emails-2026-09`) with ILM, so old data rolls to
   cheaper storage and is dropped by policy rather than a `DELETE` query.

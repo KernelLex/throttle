@@ -1,8 +1,8 @@
 # Development log — what broke and how it was fixed
 
-> A running record of problems hit during the build, what caused them, and how they were
-> resolved. Kept because the *reasoning* is often more useful than the fix — several of
-> these are traps that would be easy to fall into again.
+> A record of problems hit during the build, their causes, and how they were resolved.
+> The reasoning is often more reusable than the fix: several of these are traps that are
+> easy to fall into twice.
 
 Entries are newest-last.
 
@@ -10,13 +10,13 @@ Entries are newest-last.
 
 ## 1. The security test passed vacuously
 
-**Severity: high.** This one is worth reading even if you skip the rest.
+**Severity: high.**
 
-**What happened.** I wrote `routeSecurity.test.ts` to walk the real Express router stack
-and assert every route either carries `requireAuth` or is on an explicit allowlist. It
-reported 7/7 passing against 28 discovered routes. Good.
+`routeSecurity.test.ts` walks the real Express router stack and asserts that every route
+either carries `requireAuth` or appears on an explicit allowlist. It reported 7/7 passing
+against 28 discovered routes.
 
-Before trusting it, I injected a deliberately unguarded endpoint:
+Verification: a deliberately unguarded endpoint was injected.
 
 ```ts
 app.post('/api/secret-leak', (_req, res) => { res.json({ ok: true }); });
@@ -24,16 +24,16 @@ app.post('/api/secret-leak', (_req, res) => { res.json({ ok: true }); });
 
 **The test still passed.** It was asserting nothing.
 
-**Root cause.** Bull Board is mounted with a path:
+**Cause.** Bull Board is mounted with a path:
 
 ```ts
 app.use('/admin/queues', requireAuth, requireRoleGuard, bullBoardAdapter.getRouter());
 ```
 
 That places layers named `requireAuth` and `requireRoleGuard` in the **app-level** stack.
-My first pass collected guard names from every non-route layer at the current level,
-without checking *what path those guards were mounted at* — so it concluded that
-`requireAuth` applied to the entire application, and every route looked guarded.
+The first implementation collected guard names from every non-route layer at the current
+level without checking *what path those guards were mounted at*, so it concluded that
+`requireAuth` applied to the entire application and every route looked guarded.
 
 **Fix.** Guards are now collected as `{ name, prefix }` pairs, where the prefix comes from
 the layer's own mount regexp. A route only inherits a guard whose prefix is a prefix of
@@ -45,16 +45,16 @@ const inherited = activeGuards
   .map((guard) => guard.name);
 ```
 
-**Verification.** Re-ran both cases: clean tree 7/7 pass; with the unguarded route
+**Verification.** Both cases re-run: clean tree 7/7 pass; with the unguarded route
 injected, 2 tests fail and name `POST /api/secret-leak`.
 
-**Lesson.** A security test that has never been seen to fail is not a security test.
-Every assertion of the form "X can never happen" should be verified by making X happen
-once. The earlier version was worse than no test, because it created false confidence.
+A security test that has never been observed to fail is not a security test. Every
+assertion of the form "X can never happen" is worth verifying by making X happen once.
+The earlier version was worse than no test, because it manufactured confidence.
 
-An earlier draft of the same test also hardcoded a list of protected route prefixes —
-a second copy of the truth that would have kept passing if someone deleted a
-`router.use(requireAuth)` line. That was replaced by real stack inspection at the same time.
+An earlier draft also hardcoded a list of protected route prefixes — a second copy of the
+truth, which would have kept passing if someone deleted a `router.use(requireAuth)` line.
+That was replaced by real stack inspection at the same time.
 
 ---
 
@@ -126,8 +126,8 @@ root vite:       6.4.3
 nested web vite: none (good - single copy)
 ```
 
-**Lesson.** In a monorepo, a "type is not assignable to itself" error almost always means
-duplicate installs, not a real type problem. Check `node_modules` before debugging types.
+In a monorepo, a "type is not assignable to itself" error almost always means duplicate
+installs rather than a real type problem. Check `node_modules` before debugging types.
 
 ---
 
@@ -207,8 +207,8 @@ beyond the version bump: `memoryStorage` (nothing user-supplied is written to di
 a hard byte cap, a single-file limit, an extension allowlist, and a NUL-byte content
 sniff to reject binaries wearing a `.csv` extension.
 
-**Lesson.** Deprecation warnings during install are worth reading, not scrolling past —
-especially on a package sitting directly in an untrusted-input path.
+Deprecation warnings during install are worth reading rather than scrolling past,
+especially for a package sitting directly in an untrusted-input path.
 
 ---
 
@@ -233,8 +233,8 @@ module type: function · has .pinoHttp: function · has .default: function
 
 Fixed by switching to the named import.
 
-**Lesson.** When an import fails under NodeNext, read the package's actual `exports` map
-and check the runtime shape — guessing at extensions wastes more time than one
+When an import fails under NodeNext, read the package's actual `exports` map and check
+the runtime shape. Guessing at extensions costs more time than one
 `node -e "console.log(Object.keys(require('pkg')))"`.
 
 ---
@@ -244,19 +244,20 @@ and check the runtime shape — guessing at extensions wastes more time than one
 **Symptom.** Four type errors in `emailWorker.ts`, all of the form
 `Property 'hourlyLimit' does not exist on type 'SenderCredentials'`.
 
-**Cause.** I had written a placeholder return type and moved on:
+**Cause.** A placeholder return type left in place:
 
 ```ts
 async function loadSenderPool(
   tenantId: string,
 ): Promise<SenderCredentials[] & { hourlyLimit: number; minGapMs: number }[]> {
   // ...
-  return senders as never;    // ← this should have been a red flag
+  return senders as never;    // ← the red flag
 }
 ```
 
-That intersection is meaningless, and `as never` silenced the mismatch instead of fixing
-it. The worker needs SMTP credentials *and* scheduling policy (hourly limit, min gap).
+That intersection is meaningless, and `as never` silenced the mismatch rather than
+fixing it. The worker needs SMTP credentials *and* scheduling policy (hourly limit,
+min gap).
 
 **Fix.** A real type, and an explicit `select` rather than a bare `findMany`:
 
@@ -271,9 +272,8 @@ The explicit `select` also means adding a column to the Sender model can never s
 widen what this hot-path query pulls, and makes it obvious at a glance that the encrypted
 password is loaded deliberately.
 
-**Lesson.** `as never` and `as any` are markers for "I will fix this later". They should
-never survive to a typecheck-clean state — the typecheck passing is exactly what stops
-anyone noticing.
+`as never` and `as any` are deferral markers. They should not survive to a
+typecheck-clean state: the typecheck passing is exactly what stops anyone noticing them.
 
 ---
 
@@ -281,11 +281,11 @@ anyone noticing.
 
 **Severity: high — the deployed app looked broken to anyone but the seeder.**
 
-**What happened.** Deployment was green: health checks passing, both OAuth providers
-enabled, the Vercel→Render proxy forwarding correctly. Then a question surfaced it —
-*"if I log in, can the judges still use it?"*
+Deployment was green: health checks passing, both OAuth providers enabled, the
+Vercel→Render proxy forwarding correctly. The problem surfaced only when asking whether
+a second person signing in would find a usable app.
 
-Checking the data:
+The data:
 
 ```
 "Demo Workspace"        users: 0   senders: 3
@@ -302,28 +302,28 @@ login worked. Tenant isolation worked *correctly* — it was isolating the user 
 seeded data exactly as designed. Nothing was broken; two correct behaviours simply did
 not compose.
 
-**Fix.** `ensureTenantHasSenders()` provisions Ethereal mailboxes for any workspace that
-has none, called from the OAuth callback. It is a no-op once a workspace has senders, so
-it fires exactly once, and it never throws — a provisioning failure must degrade to "no
-senders yet", never to "cannot sign in".
+**Fix.** `ensureTenantHasSenders()` provisions Ethereal mailboxes for any workspace with
+none, called from the OAuth callback. It is a no-op once a workspace has senders, so it
+fires exactly once, and it never throws: a provisioning failure degrades to "no senders
+yet", never to "cannot sign in".
 
 Plus `backfillSenders.ts` to repair existing data: it provisioned senders for the real
 workspace and deleted the orphaned `Demo Workspace` whose senders nobody could reach.
 
-**Lesson.** Integration bugs live in the gaps between correct components. Seeding and
-tenant creation were each right; nobody had asked whether a *new user* could actually
-use the product. "Does a first-time visitor reach a working state?" is a test in its own
-right, and green health checks say nothing about it.
+Integration bugs live in the gaps between correct components. Seeding and tenant
+creation were each right on their own; what went unasked was whether a *new user* could
+use the product at all. "Does a first-time visitor reach a working state?" is a test in
+its own right, and green health checks say nothing about it.
 
 ---
 
 ## Open items
 
-- **Docker Desktop is not installed** on the development machine, so the full
-  schedule → send → restart cycle has not yet been executed end to end against live
-  Postgres/Redis/Elasticsearch. All code typechecks and unit tests pass; integration
-  verification is pending infra.
-- **No E2E browser test** for the login → compose → schedule flow.
+- **The full schedule → send → restart cycle has not been driven end to end.** All code
+  typechecks and unit tests pass, and the infrastructure is verified independently
+  (health, proxy, OAuth redirect, auth guards), but no run has gone from compose through
+  to a sent message.
+- **No end-to-end browser test** for the login → compose → schedule flow.
 - **Campaign pump** (incremental materialisation beyond 5,000 recipients) is wired into
-  the queue and config but its handler is currently a stub — campaigns below the
-  threshold are fully materialised up front, which covers every realistic demo size.
+  the queue and config, but its handler is a stub. Campaigns below the threshold are
+  materialised in full up front, which covers every realistic demo size.
