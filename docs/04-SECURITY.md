@@ -311,4 +311,6 @@ Production additionally rejects:
 | No per-tenant encryption keys | One key compromise affects all tenants | Versioned ciphertext makes rotation possible |
 | Audit log is write-only | No UI to review it | Rows are queryable directly |
 | Domain-based tenant auto-join | Anyone with an address at the domain joins the workspace | Public domains get private workspaces; a real product needs invitations |
+| Senders authenticate with SMTP passwords | A user hands over a credential with full send access to their mailbox | Encrypted at rest with AES-256-GCM and never returned by the API. A production system would use Google OAuth with the `gmail.send` scope so no password is entered at all |
+| No UI to promote a MEMBER to ADMIN | A second user on a shared company domain cannot add a sender | Deliberate: it stops anyone who obtains an address at that domain adding a sending identity. Promotion currently needs a direct database change |
 | No E2E security test | Unit-level route guard only | The router-stack test covers the specific failure mode that matters |

@@ -294,6 +294,45 @@ Connect it later and notifications start working with **no redeploy**, because t
 worker reads the installation from the database on every notification rather than
 caching it at boot.
 
+### Senders and who can add them
+
+Every workspace gets **three Ethereal senders provisioned automatically on first
+login**, so a new account can schedule immediately with nothing to configure.
+
+Real SMTP senders are added from the dashboard: **Sender health → Add sender**, with
+presets for Gmail, Brevo and Ethereal. The server opens a real SMTP connection and
+verifies the credentials *before* saving, so a typo fails at the form rather than
+three hours later when the first scheduled send silently fails. Passwords are
+encrypted with AES-256-GCM and never returned by the API — `SenderDto` has no
+password field, so they cannot be serialised by accident.
+
+**Who can add one:**
+
+| Signs in with | Workspace | Role | Can add senders |
+|---|---|---|---|
+| A personal domain (gmail.com, outlook.com, …) | their own, private | ADMIN | yes |
+| First user on a custom domain | new, named for the domain | ADMIN | yes |
+| Later users on that domain | joins the existing one | MEMBER | no |
+
+Anyone signing in with a personal address therefore gets their own workspace and can
+add their own sending identity straight away. The restriction only bites inside a
+shared company workspace, and it is deliberate: without it, anyone who obtained an
+address at that domain could add an identity that sends as the organisation.
+Promoting a member to ADMIN currently requires a direct database change.
+
+> **Known limitation.** Real senders authenticate with SMTP credentials — for Gmail,
+> a 16-character App Password. That means asking a user to hand over a credential
+> with full send access to their mailbox, which is a significant trust ask for
+> something a demo does not need.
+>
+> A production system would use Google OAuth with the `gmail.send` scope instead: the
+> user approves once, the app stores a refresh token, and no password is ever entered.
+> That was not built here because the brief specifies Ethereal as the SMTP provider,
+> and Ethereal needs no such flow.
+>
+> **Reviewers do not need to add anything.** The auto-provisioned Ethereal senders
+> work out of the box, and every sent message links to its rendered preview.
+
 ### Ethereal (fake SMTP)
 
 Nothing to do — `npm run db:seed` provisions three Ethereal mailboxes via the Nodemailer
