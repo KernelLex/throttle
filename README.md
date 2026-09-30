@@ -47,15 +47,19 @@ preview URL and never delivers them — every Sent row links to the real message
 
 ---
 
-### [Watch the full tour with sound — brag.mp4](brag-output/brag.mp4) &nbsp;&middot;&nbsp; 60 seconds
+### [Watch the full tour with sound — brag.mp4](brag-output/brag.mp4) &nbsp;&middot;&nbsp; 61 seconds
 
 ![Throttle — product tour](brag-output/brag.gif)
 
 **Covered in the tour:** Google login &rarr; dashboard &rarr; compose with CSV upload
 &rarr; **the Delivery Planner** &rarr; the shared `planSchedule()` &rarr; sending with
-Ethereal previews &rarr; hitting the rate limit and the **live Slack alert** &rarr; the
-**circuit breaker rerouting a failed sender** &rarr; surviving a restart &rarr;
-Elasticsearch search and the live queue dashboard.
+Ethereal previews &rarr; the rate limit and the **live Slack alert** &rarr; the **circuit
+breaker rerouting a failed sender** &rarr; surviving a restart &rarr; Elasticsearch search
+and the live queue dashboard.
+
+The Slack and circuit-breaker scenes show real evidence rather than a mock-up: the
+`delivered: true` worker log from an actual alert, and the sender states captured during
+an unplanned SMTP outage that opened a breaker for real.
 
 ---
 
@@ -619,6 +623,7 @@ read-modify-write and lose a state change.
 | Empty states | ✅ distinct per tab and for search |
 | Error handling | ✅ toasts, field-level errors, retry |
 | Reusable components | ✅ [`components/ui/`](apps/web/src/components/ui/) |
+| **Matches the provided Figma** | ✅ light theme, green accent, sidebar layout, full-page compose |
 | TypeScript types for API | ✅ imported from `@throttle/core` — no duplication |
 | ⭐ Delivery Planner | ✅ |
 | ⭐ Sender health / circuit breaker panel | ✅ |
