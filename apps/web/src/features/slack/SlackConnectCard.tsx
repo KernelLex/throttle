@@ -60,7 +60,7 @@ export function SlackConnectCard() {
         {status.isLoading ? (
           <Skeleton className="h-10 w-full" />
         ) : !slackConfigured ? (
-          <div className="rounded-md bg-surface-2 px-3 py-2.5">
+          <div className="rounded-lg bg-surface-2 px-3 py-2.5">
             <p className="text-xs text-ink-muted">
               Slack is not configured on this server. Set{' '}
               <code className="font-mono text-ink-secondary">SLACK_CLIENT_ID</code> and{' '}
@@ -71,7 +71,7 @@ export function SlackConnectCard() {
         ) : status.data?.connected ? (
           <div className="space-y-3">
             <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 text-ink" aria-hidden="true">
+              <span className="mt-0.5 text-accent" aria-hidden="true">
                 ●
               </span>
               <div className="min-w-0">
@@ -114,7 +114,7 @@ export function SlackConnectCard() {
             {/* Full-page navigation — OAuth needs a top-level redirect. */}
             <a
               href={api.slack.installUrl()}
-              className="inline-flex h-9 items-center gap-2 rounded-md bg-surface-2 px-3 text-sm font-medium text-ink ring-1 ring-inset ring-line-strong transition-colors hover:bg-surface-3"
+              className="inline-flex h-10 items-center gap-2 rounded-pill border border-accent px-4 text-sm font-medium text-accent transition-colors hover:bg-accent-tint"
             >
               <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="#E01E5A" d="M5.04 15.17a2.53 2.53 0 1 1-2.52-2.53h2.52v2.53zm1.27 0a2.53 2.53 0 0 1 5.05 0v6.3a2.53 2.53 0 0 1-5.05 0v-6.3z" />

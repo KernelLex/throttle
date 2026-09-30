@@ -33,6 +33,26 @@ export function formatDateTime(value: string | number | Date | null): string {
   });
 }
 
+/**
+ * The Figma's list-row timestamp: "Tue 9:15:12 AM".
+ *
+ * Weekday plus a 12-hour clock WITH seconds. Seconds matter here because a
+ * scheduler spaces sends a couple of seconds apart, and a minute-resolution
+ * stamp would render several consecutive rows as the same instant.
+ */
+export function formatMailTime(value: string | number | Date | null): string {
+  if (value === null) return '\u2014';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '\u2014';
+  return date.toLocaleString(undefined, {
+    weekday: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+}
+
 /** Time only, e.g. "16:12". Used on the chart's hour-window axis. */
 export function formatTime(value: string | number | Date): string {
   const date = new Date(value);

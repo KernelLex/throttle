@@ -1,103 +1,81 @@
 @import 'tailwindcss';
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Throttle — monochrome
+   Throttle — Outbox Labs design system
 
-   The whole interface is greyscale. No hue anywhere, including the chart.
+   Values taken from the provided Figma (Outbox Labs Assignment). Light surface,
+   a single green accent, and a Gmail-shaped layout: left rail for navigation,
+   right pane for the list.
 
-   WHY THIS IS HARDER THAN IT LOOKS, AND HOW IT IS RESOLVED
-   -------------------------------------------------------
-   Removing colour removes the channel most interfaces use to carry meaning —
-   which series is which, whether something succeeded or failed. Three
-   substitutes do that work here:
+   THE ACCENT DOES THREE JOBS, AND ONLY THREE
+   ------------------------------------------
+   In the Figma green appears as: a solid primary button, an outline button, and
+   a tint behind the selected nav item. Everything else is greyscale. Keeping to
+   that is most of what makes the design feel deliberate rather than decorated —
+   so a new green surface needs a reason, not just a spare token.
 
-     1. LIGHTNESS  — the chart series ramp below is spaced so every adjacent
-                     pair differs by >= 1.7:1 in contrast, and every step clears
-                     3:1 against the chart surface.
-     2. ICON       — every status ships with a glyph, never a swatch alone.
-     3. LABEL      — every status and every series is named in text.
-
-   A useful consequence: greyscale is the MOST colourblind-safe categorical
-   encoding there is. Protanopia, deuteranopia and tritanopia all perceive
-   lightness normally, so a ramp that separates by lightness separates
-   identically for every viewer. It would fail a hue-based CVD validator only
-   because that validator assumes chroma is present.
-
-   THE CEILING
-   -----------
-   Four series. The span between "readable on the surface" (3:1) and "white"
-   (18.7:1) only fits four steps at >= 1.7:1 apart. A fifth would be
-   indistinguishable from its neighbour, so a fifth sender folds into "Other"
-   rather than getting an invented shade.
-
-   Measured against the chart surface (#0c0c0d):
-     series-1  #fafafa  18.73:1     adjacent gaps: 1.72 · 1.73 · 1.74
-     series-2  #c1c1c1  10.86:1
-     series-3  #929292   6.28:1
-     series-4  #6a6a6a   3.61:1
+   STATUS COLOURS
+   --------------
+   Amber marks a scheduled send (a pending time), grey marks a completed one.
+   Both ship with a label, never colour alone.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @theme {
-  /* ── Surfaces ──────────────────────────────────────────────────────────
-     True black at the base, with each layer a precise step up. Depth comes
-     from these steps and from hairline borders, not from drop shadows.      */
-  --color-plane: #000000;
-  --color-surface: #0c0c0d;
-  --color-surface-2: #161617;
-  --color-surface-3: #212123;
-  --color-surface-4: #2c2c2e;
+  /* ── Surfaces ──────────────────────────────────────────────────────────── */
+  --color-canvas: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-2: #f7f7f8;
+  --color-surface-3: #f0f0f1;
+  --color-surface-4: #e8e8ea;
 
-  /* ── Ink ───────────────────────────────────────────────────────────────
-     Off-white rather than pure #fff: at 18:1 on black, pure white vibrates
-     and is tiring to read.                                                  */
-  --color-ink: #f5f5f7;
-  --color-ink-secondary: #a1a1a6;
-  --color-ink-muted: #6e6e73;
-  --color-ink-faint: #48484a;
+  /* ── Ink ───────────────────────────────────────────────────────────────── */
+  --color-ink: #1a1a1a;
+  --color-ink-secondary: #5f6368;
+  --color-ink-muted: #8a8d91;
+  --color-ink-faint: #b4b7bb;
 
-  /* ── Lines ─────────────────────────────────────────────────────────────
-     Hairlines, deliberately close to the surface. A border should be felt
-     before it is noticed.                                                   */
-  --color-line: #1f1f21;
-  --color-line-strong: #2c2c2e;
+  /* ── Lines ─────────────────────────────────────────────────────────────── */
+  --color-line: #ebebed;
+  --color-line-strong: #dcdce0;
 
-  /* ── Accent ────────────────────────────────────────────────────────────
-     The accent IS white. A primary button is white-on-black; everything else
-     recedes. With no colour to rank things, hierarchy comes from contrast.   */
-  --color-accent: #f5f5f7;
-  --color-accent-hover: #ffffff;
-  --color-accent-muted: #d1d1d6;
+  /* ── Accent — the Figma green ──────────────────────────────────────────── */
+  --color-accent: #00a63e;
+  --color-accent-hover: #008f35;
+  --color-accent-active: #007a2d;
+  --color-accent-tint: #e7f7ed;
+  --color-accent-tint-strong: #d3f0de;
 
-  /* ── Chart series — see the header note ────────────────────────────── */
-  --color-series-1: #fafafa;
-  --color-series-2: #c1c1c1;
-  --color-series-3: #929292;
-  --color-series-4: #6a6a6a;
+  /* ── Status ────────────────────────────────────────────────────────────── */
+  /* Amber = waiting on a clock. Grey = done. */
+  --color-pending-bg: #fdefd9;
+  --color-pending-ink: #a15c07;
+  --color-done-bg: #f0f0f1;
+  --color-done-ink: #5f6368;
+  --color-fail-bg: #fdeaea;
+  --color-fail-ink: #b42318;
 
-  /* ── Status ────────────────────────────────────────────────────────────
-     Greyscale, so state is carried entirely by icon and label. "Sent" is
-     bright, "failed" is dim, "pending" sits between — an ordering that reads
-     without any colour vocabulary at all.                                    */
-  --color-good: #f5f5f7;
-  --color-warning: #a1a1a6;
-  --color-serious: #86868b;
-  --color-critical: #6e6e73;
+  /* ── Chart series ──────────────────────────────────────────────────────────
+     A single-hue green ramp, light to dark, so the chart reads as one family
+     with the accent rather than introducing a second palette. Each step clears
+     3:1 on white and sits >= 1.5:1 from its neighbour, so the four senders stay
+     distinguishable — and because separation is by LIGHTNESS, it holds for
+     colourblind viewers too. Every series is also named in the legend.        */
+  --color-series-1: #00702a;
+  --color-series-2: #00a63e;
+  --color-series-3: #4cc274;
+  --color-series-4: #8dd9a8;
 
-  /* ── Type ──────────────────────────────────────────────────────────────
-     The system face first, so it renders as SF Pro on Apple platforms and
-     Segoe on Windows. Inter is the fallback and is metrically close.         */
+  /* ── Type ──────────────────────────────────────────────────────────────── */
   --font-sans:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter',
-    system-ui, 'Segoe UI', sans-serif;
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', ui-monospace, Menlo, monospace;
 
-  /* ── Radii ─────────────────────────────────────────────────────────────
-     Larger and softer than the usual web defaults.                          */
-  --radius-sm: 0.5rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 0.875rem;
-  --radius-xl: 1.125rem;
-  --radius-2xl: 1.375rem;
+  /* ── Radii — the Figma is generously rounded; pills for nav and buttons ── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-pill: 9999px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -110,38 +88,26 @@
   }
 
   html {
-    color-scheme: dark;
+    color-scheme: light;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
   }
 
   body {
-    background-color: var(--color-plane);
+    background-color: var(--color-surface-2);
     color: var(--color-ink);
     font-family: var(--font-sans);
-    /* Tightened tracking. At display sizes the system face is drawn for it,
-       and it is most of what separates "designed" from "default". */
-    letter-spacing: -0.014em;
+    letter-spacing: -0.006em;
   }
 
-  h1,
-  h2,
-  h3 {
-    letter-spacing: -0.026em;
-  }
-
-  /* Tabular figures wherever numbers stack vertically, so digits align in a
-     column. Deliberately NOT applied to large standalone figures, where
-     proportional numerals are better drawn. */
+  /* Tabular figures wherever numbers stack vertically — nav counts, table
+     columns, timestamps — so digits line up. */
   th,
   td,
   .tabular {
     font-variant-numeric: tabular-nums;
   }
 
-  /* A visible focus ring on every interactive element. Removing outlines
-     without replacing them makes an app unusable by keyboard. */
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
@@ -149,8 +115,12 @@
   }
 
   ::selection {
-    background-color: var(--color-ink);
-    color: var(--color-plane);
+    background-color: var(--color-accent-tint-strong);
+    color: var(--color-ink);
+  }
+
+  ::placeholder {
+    color: var(--color-ink-muted);
   }
 
   ::-webkit-scrollbar {
@@ -163,55 +133,58 @@
   ::-webkit-scrollbar-thumb {
     background-color: var(--color-line-strong);
     border-radius: 999px;
-    border: 3px solid var(--color-plane);
+    border: 3px solid transparent;
+    background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
     background-color: var(--color-ink-faint);
-  }
-
-  /* Placeholder text recedes further than secondary ink — it is a hint, not
-     content. */
-  ::placeholder {
-    color: var(--color-ink-faint);
+    background-clip: content-box;
   }
 }
 
 @layer utilities {
-  /* The hairline that separates every surface. A single inset ring reads more
-     precisely than a border, because it does not affect layout. */
+  /* Hairline used on cards and panels. An inset ring rather than a border, so
+     it never shifts layout. */
   .ring-hairline {
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
+    box-shadow: inset 0 0 0 1px var(--color-line);
   }
 
-  .ring-hairline-strong {
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+  .card-shadow {
+    box-shadow:
+      0 1px 2px rgb(16 24 40 / 0.04),
+      0 1px 3px rgb(16 24 40 / 0.06);
   }
 
-  /* Motion is short and eased out — present, never performed. */
+  .popover-shadow {
+    box-shadow:
+      0 12px 32px rgb(16 24 40 / 0.12),
+      0 2px 6px rgb(16 24 40 / 0.06);
+  }
+
   .animate-in {
-    animation: fade-in 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    animation: fade-in 0.2s cubic-bezier(0.32, 0.72, 0, 1);
   }
 
   @keyframes fade-in {
     from {
       opacity: 0;
-      transform: translateY(6px) scale(0.995);
+      transform: translateY(4px);
     }
     to {
       opacity: 1;
-      transform: translateY(0) scale(1);
+      transform: translateY(0);
     }
   }
 
   .skeleton {
     background: linear-gradient(
       90deg,
-      var(--color-surface-2) 25%,
-      var(--color-surface-3) 50%,
-      var(--color-surface-2) 75%
+      var(--color-surface-3) 25%,
+      var(--color-surface-4) 50%,
+      var(--color-surface-3) 75%
     );
     background-size: 200% 100%;
-    animation: shimmer 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: shimmer 1.5s ease-in-out infinite;
   }
 
   @keyframes shimmer {

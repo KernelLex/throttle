@@ -40,7 +40,7 @@ export function Card({
 }: { className?: string; children: ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('rounded-xl bg-surface ring-hairline', className)}
+      className={cn('rounded-xl border border-line bg-surface', className)}
       {...props}
     >
       {children}
@@ -101,7 +101,7 @@ function FieldWrapper({ label, hint, error, required, children }: FieldWrapperPr
         <label htmlFor={id} className="block text-sm font-medium text-ink-secondary">
           {label}
           {required ? (
-            <span className="ml-0.5 text-ink-muted" aria-hidden="true">
+            <span className="ml-0.5 text-fail-ink" aria-hidden="true">
               *
             </span>
           ) : null}
@@ -111,7 +111,7 @@ function FieldWrapper({ label, hint, error, required, children }: FieldWrapperPr
       {children(id, describedBy)}
 
       {error ? (
-        <p id={errorId} role="alert" className="text-sm text-ink-secondary">
+        <p id={errorId} role="alert" className="text-sm text-fail-ink">
           {error}
         </p>
       ) : hint ? (
@@ -124,9 +124,9 @@ function FieldWrapper({ label, hint, error, required, children }: FieldWrapperPr
 }
 
 const fieldBase =
-  'w-full rounded-md bg-surface-2 px-3 text-sm text-ink placeholder:text-ink-muted ' +
+  'w-full rounded-lg bg-surface px-3.5 text-[15px] text-ink placeholder:text-ink-muted ' +
   'ring-1 ring-inset ring-line-strong transition-colors ' +
-  'focus:ring-[1.5px] focus:ring-ink-secondary focus:outline-none ' +
+  'focus:ring-[1.5px] focus:ring-accent focus:outline-none ' +
   'disabled:cursor-not-allowed disabled:opacity-50';
 
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> {
@@ -148,7 +148,7 @@ export function Input({ label, hint, error, className, ...props }: InputProps) {
           id={id}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
-          className={cn(fieldBase, 'h-10', error && 'ring-ink-muted', className)}
+          className={cn(fieldBase, 'h-10', error && 'ring-fail-ink', className)}
           {...props}
         />
       )}
@@ -176,7 +176,7 @@ export function Textarea({ label, hint, error, className, ...props }: TextareaPr
           id={id}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
-          className={cn(fieldBase, 'min-h-28 py-2.5 leading-relaxed', error && 'ring-ink-muted', className)}
+          className={cn(fieldBase, 'min-h-28 py-2.5 leading-relaxed', error && 'ring-fail-ink', className)}
           {...props}
         />
       )}
@@ -202,7 +202,7 @@ export function Select({ label, hint, error, className, children, ...props }: Se
         <select
           id={id}
           aria-describedby={describedBy}
-          className={cn(fieldBase, 'h-10', error && 'ring-ink-muted', className)}
+          className={cn(fieldBase, 'h-10', error && 'ring-fail-ink', className)}
           {...props}
         >
           {children}
@@ -226,13 +226,13 @@ export function Select({ label, hint, error, className, children, ...props }: Se
 const STATUS_STYLES: Record<EmailStatus, { label: string; glyph: string; className: string }> = {
   // Brightness encodes progress: dim = waiting, bright = done. The glyph and the
   // label carry the actual meaning, so nothing depends on the shade being read.
-  SCHEDULED: { label: 'Scheduled', glyph: '○', className: 'text-ink-secondary ring-line-strong' },
-  QUEUED: { label: 'Queued', glyph: '◔', className: 'text-ink-secondary ring-line-strong' },
-  SENDING: { label: 'Sending', glyph: '◐', className: 'text-ink ring-ink-faint' },
-  SENT: { label: 'Sent', glyph: '●', className: 'text-ink ring-ink-muted bg-surface-4' },
-  FAILED: { label: 'Failed', glyph: '✕', className: 'text-ink-muted ring-ink-faint' },
-  CANCELLED: { label: 'Cancelled', glyph: '—', className: 'text-ink-faint ring-line' },
-  RESCHEDULED: { label: 'Deferred', glyph: '↻', className: 'text-ink-secondary ring-line-strong' },
+  SCHEDULED: { label: 'Scheduled', glyph: '○', className: 'bg-pending-bg text-pending-ink ring-transparent' },
+  QUEUED: { label: 'Queued', glyph: '◔', className: 'bg-pending-bg text-pending-ink ring-transparent' },
+  SENDING: { label: 'Sending', glyph: '◐', className: 'bg-pending-bg text-pending-ink ring-transparent' },
+  SENT: { label: 'Sent', glyph: '●', className: 'bg-done-bg text-done-ink ring-transparent' },
+  FAILED: { label: 'Failed', glyph: '✕', className: 'bg-fail-bg text-fail-ink ring-transparent' },
+  CANCELLED: { label: 'Cancelled', glyph: '—', className: 'bg-done-bg text-ink-muted ring-transparent' },
+  RESCHEDULED: { label: 'Deferred', glyph: '↻', className: 'bg-pending-bg text-pending-ink ring-transparent' },
 };
 
 export function StatusBadge({ status }: { status: EmailStatus }) {
@@ -262,11 +262,11 @@ export function Badge({
   className?: string;
 }) {
   const tones = {
-    neutral: 'bg-surface-3 text-ink-secondary ring-line-strong',
-    good: 'bg-surface-4 text-ink ring-ink-faint',
-    warning: 'bg-surface-3 text-ink-secondary ring-ink-faint',
-    critical: 'bg-transparent text-ink-muted ring-ink-faint',
-    brand: 'bg-surface-3 text-ink ring-line-strong',
+    neutral: 'bg-surface-3 text-ink-secondary ring-transparent',
+    good: 'bg-accent-tint text-accent ring-transparent',
+    warning: 'bg-pending-bg text-pending-ink ring-transparent',
+    critical: 'bg-fail-bg text-fail-ink ring-transparent',
+    brand: 'bg-accent-tint text-accent ring-transparent',
   } as const;
 
   return (
@@ -308,6 +308,21 @@ export function TableSkeleton({ rows = 5, columns = 4 }: { rows?: number; column
   );
 }
 
+export function RowsSkeleton({ rows = 6 }: { rows?: number }) {
+  return (
+    <div aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading\u2026</span>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 border-b border-line px-6 py-4">
+          <Skeleton className="h-4 w-[150px]" />
+          <Skeleton className="h-6 w-[110px] rounded-pill" />
+          <Skeleton className="h-4 flex-1" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function EmptyState({
   icon,
   title,
@@ -321,7 +336,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-      {icon ? <div className="mb-4 text-ink-muted">{icon}</div> : null}
+      {icon ? <div className="mb-4 text-ink-faint">{icon}</div> : null}
       <h3 className="text-sm font-semibold text-ink">{title}</h3>
       {description ? (
         <p className="mt-1 max-w-sm text-sm text-ink-muted">{description}</p>
@@ -355,7 +370,7 @@ export function ErrorState({
             action: (
               <button
                 onClick={onRetry}
-                className="text-sm font-medium text-ink hover:underline"
+                className="text-sm font-medium text-accent hover:underline"
               >
                 Try again
               </button>
@@ -439,7 +454,7 @@ export function Modal({
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-6">
       <div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/25"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -450,7 +465,7 @@ export function Modal({
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          'animate-in relative my-8 w-full rounded-2xl bg-surface shadow-2xl ring-hairline-strong focus:outline-none',
+          'animate-in popover-shadow relative my-8 w-full rounded-2xl border border-line bg-surface focus:outline-none',
           widths[size],
         )}
       >
@@ -516,9 +531,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({ toast }), [toast]);
 
   const tones = {
-    success: 'ring-ink-muted text-ink',
-    error: 'ring-ink-faint text-ink-secondary',
-    info: 'ring-line-strong text-ink-secondary',
+    success: 'border-accent text-accent',
+    error: 'border-fail-ink text-fail-ink',
+    info: 'border-line-strong text-ink-secondary',
   } as const;
 
   return (
@@ -535,7 +550,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             className={cn(
-              'animate-in pointer-events-auto flex items-start gap-3 rounded-lg bg-surface-2 px-4 py-3 shadow-lg ring-1',
+              'animate-in popover-shadow pointer-events-auto flex items-start gap-3 rounded-lg border bg-surface px-4 py-3',
               tones[t.tone],
             )}
           >

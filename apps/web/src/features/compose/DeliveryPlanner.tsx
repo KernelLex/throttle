@@ -146,7 +146,7 @@ export function DeliveryPlanner({
 
   if (senders.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-ink-faint bg-surface-2 px-5 py-8 text-center">
+      <div className="rounded-lg border border-dashed border-line-strong bg-surface-2 px-5 py-8 text-center">
         <p className="text-sm text-ink-secondary">
           No active senders. Add a sender before scheduling.
         </p>
@@ -156,7 +156,7 @@ export function DeliveryPlanner({
 
   return (
     <section
-      className="rounded-lg bg-surface ring-hairline"
+      className="rounded-xl border border-line bg-surface"
       aria-label="Delivery forecast"
     >
       {/* ── Headline ──────────────────────────────────────────────────────── */}
@@ -200,7 +200,7 @@ export function DeliveryPlanner({
             />
             <XAxis
               dataKey="label"
-              tick={{ fill: 'var(--color-ink-muted)', fontSize: 11 }}
+              tick={{ fill: 'var(--color-pending-ink)', fontSize: 11 }}
               axisLine={{ stroke: 'var(--color-line-strong)' }}
               tickLine={false}
               // Recharts drops labels itself when they would collide, which keeps a
@@ -208,7 +208,7 @@ export function DeliveryPlanner({
               interval="preserveStartEnd"
             />
             <YAxis
-              tick={{ fill: 'var(--color-ink-muted)', fontSize: 11 }}
+              tick={{ fill: 'var(--color-pending-ink)', fontSize: 11 }}
               axisLine={false}
               tickLine={false}
               width={44}
@@ -220,13 +220,13 @@ export function DeliveryPlanner({
             {plan.totalCapacityPerHour > 0 ? (
               <ReferenceLine
                 y={plan.totalCapacityPerHour}
-                stroke="var(--color-ink-faint)"
+                stroke="var(--color-pending-ink)"
                 strokeDasharray="4 4"
                 strokeWidth={1}
                 label={{
                   value: `capacity ${formatNumber(plan.totalCapacityPerHour)}/hr`,
                   position: 'insideTopRight',
-                  fill: 'var(--color-ink-muted)',
+                  fill: 'var(--color-pending-ink)',
                   fontSize: 10,
                 }}
               />
@@ -278,7 +278,7 @@ export function DeliveryPlanner({
         ))}
         {overflowCount > 0 ? (
           <li className="flex items-center gap-2 text-xs text-ink-muted">
-            <span className="size-2.5 shrink-0 rounded-sm bg-ink-faint" aria-hidden="true" />
+            <span className="size-2.5 shrink-0 rounded-sm bg-surface-4" aria-hidden="true" />
             <span>+{overflowCount} more (not charted)</span>
           </li>
         ) : null}
@@ -289,7 +289,7 @@ export function DeliveryPlanner({
         <ul className="space-y-1.5 border-t border-line px-5 py-3">
           {plan.warnings.map((warning) => (
             <li key={`${warning.code}-${warning.senderId ?? ''}`} className="flex gap-2 text-xs">
-              <span className="mt-0.5 shrink-0 text-ink-muted" aria-hidden="true">
+              <span className="mt-0.5 shrink-0 text-pending-ink" aria-hidden="true">
                 ⚠
               </span>
               <span className="text-ink-muted">{warning.message}</span>
@@ -361,7 +361,7 @@ function PlannerTooltip({ active, payload, senders }: TooltipProps) {
   const row = payload[0]!.payload;
 
   return (
-    <div className="rounded-lg bg-surface-3 px-3 py-2 text-xs shadow-xl ring-1 ring-line-strong">
+    <div className="rounded-lg border border-line bg-surface px-3 py-2 text-xs popover-shadow">
       <p className="font-medium text-ink">{formatDateTime(row.windowStart)}</p>
       <p className="mb-1.5 text-ink-muted">
         {formatNumber(row.total)} email{row.total === 1 ? '' : 's'} this hour

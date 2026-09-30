@@ -27,3 +27,7 @@ apps/api/prisma/migrations/dev.db*
 .docker-data/
 uploads/
 tmp/
+
+# Launch-video scratch output (regenerated on demand)
+brag-output/
+brag-output-*/

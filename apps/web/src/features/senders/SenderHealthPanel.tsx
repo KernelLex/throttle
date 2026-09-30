@@ -31,9 +31,9 @@ import {
  * viewer to interpret a shade.
  */
 const CIRCUIT_PRESENTATION = {
-  CLOSED: { icon: '●', label: 'Healthy', text: 'text-ink', bar: 'bg-ink' },
-  HALF_OPEN: { icon: '◐', label: 'Probing', text: 'text-ink-secondary', bar: 'bg-ink-secondary' },
-  OPEN: { icon: '■', label: 'Paused', text: 'text-ink-muted', bar: 'bg-ink-muted' },
+  CLOSED: { icon: '●', label: 'Healthy', text: 'text-accent', bar: 'bg-accent' },
+  HALF_OPEN: { icon: '◐', label: 'Probing', text: 'text-pending-ink', bar: 'bg-pending-ink' },
+  OPEN: { icon: '■', label: 'Paused', text: 'text-fail-ink', bar: 'bg-fail-ink' },
 } as const;
 
 export function SenderHealthPanel() {
@@ -143,7 +143,7 @@ function SenderRow({
       {/* Budget meter. */}
       <div className="mt-3">
         <div
-          className="h-1.5 overflow-hidden rounded-full bg-surface-3"
+          className="h-1.5 overflow-hidden rounded-full bg-surface-4"
           role="progressbar"
           aria-valuenow={Math.round(usedPercent)}
           aria-valuemin={0}
@@ -159,21 +159,21 @@ function SenderRow({
 
       <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
         <span>
-          Score <span className="tabular text-ink-secondary">{sender.healthScore.toFixed(1)}</span>
+          Score <span className="tabular text-pending-ink">{sender.healthScore.toFixed(1)}</span>
         </span>
         <span>
-          Sent <span className="tabular text-ink-secondary">{formatNumber(sender.sentTotal)}</span>
+          Sent <span className="tabular text-pending-ink">{formatNumber(sender.sentTotal)}</span>
         </span>
         {sender.failedTotal > 0 ? (
           <span>
             Failed{' '}
-            <span className="tabular text-ink-secondary">{formatNumber(sender.failedTotal)}</span>
+            <span className="tabular text-fail-ink">{formatNumber(sender.failedTotal)}</span>
           </span>
         ) : null}
         {sender.recentFailureRate > 0 ? (
           <span>
             Failure rate{' '}
-            <span className="tabular text-ink-secondary">
+            <span className="tabular text-pending-ink">
               {(sender.recentFailureRate * 100).toFixed(0)}%
             </span>
           </span>
@@ -183,8 +183,8 @@ function SenderRow({
       {/* Explain the pause, and offer the override — waiting out a cooldown after
           fixing credentials is pure friction. */}
       {sender.circuitState === 'OPEN' ? (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-3 px-3 py-2 ring-1 ring-ink-faint">
-          <p className="text-xs text-ink-secondary">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-fail-bg px-3 py-2">
+          <p className="text-xs text-fail-ink">
             Paused after {sender.consecutiveFailures} consecutive failures.
             {sender.retryAt ? ` Retrying ${formatRelative(sender.retryAt)}.` : ''}
           </p>

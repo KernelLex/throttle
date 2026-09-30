@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { API_URL, api } from '../lib/api';
-import { formatNumber, formatRelative } from '../lib/utils';
 import { useLogout, useSession } from '../hooks/useAuth';
-import { Button, Card, Input, Skeleton, useToast } from '../components/ui';
-import { ComposeModal } from '../features/compose/ComposeModal';
-import { EmailTable, type EmailBucket } from '../features/emails/EmailTable';
+import { useToast } from '../components/ui';
+import { Sidebar, type MailboxView } from '../components/Sidebar';
+import { EmailList } from '../features/emails/EmailList';
+import { ComposePage } from '../features/compose/ComposePage';
 import { SenderHealthPanel } from '../features/senders/SenderHealthPanel';
 import { SlackConnectCard } from '../features/slack/SlackConnectCard';
 
@@ -23,13 +23,16 @@ export function DashboardPage() {
   const logout = useLogout();
   const { toast } = useToast();
 
-  const [tab, setTab] = useState<EmailBucket>('scheduled');
-  const [composeOpen, setComposeOpen] = useState(false);
+  const [view, setView] = useState<MailboxView>('scheduled');
+  const [composing, setComposing] = useState(false);
   const [search, setSearch] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [panelOpen, setPanelOpen] = useState(false);
+
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Surface the Slack callback result once, then strip the param so a refresh does
-  // not replay the toast.
+  // Surface the Slack callback result once, then strip the param so a refresh
+  // does not replay the toast.
   const slackResult = searchParams.get('slack');
   useEffect(() => {
     if (!slackResult) return;
@@ -40,219 +43,111 @@ export function DashboardPage() {
   }, [slackResult, toast, searchParams, setSearchParams]);
 
   const stats = useQuery({
-    queryKey: ['stats'],
+    queryKey: ['stats', refreshKey],
     queryFn: () => api.stats.get(),
     refetchInterval: 10_000,
   });
 
   return (
-    <div className="min-h-screen">
-      {/* ═══ Header ═══════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-40 border-b border-line bg-plane/85 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-[10px] bg-accent">
-              <svg className="size-4 text-plane" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M13 2L4.5 12.5h6L11 22l8.5-10.5h-6L13 2z" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-ink">Throttle</p>
-              {user ? (
-                <p className="text-xs text-ink-muted">{user.tenantName}</p>
-              ) : null}
-            </div>
-          </div>
+    <div className="flex h-screen overflow-hidden bg-surface-2">
+      <Sidebar
+        user={user}
+        active={view}
+        onSelect={(next) => {
+          setView(next);
+          setComposing(false);
+        }}
+        onCompose={() => setComposing(true)}
+        scheduledCount={stats.data?.scheduledCount ?? 0}
+        sentCount={stats.data?.sentCount ?? 0}
+        onLogout={() => logout.mutate()}
+        loggingOut={logout.isPending}
+        {...(user?.role === 'ADMIN' ? { queuesHref: `${API_URL}/admin/queues` } : {})}
+      />
 
-          <div className="flex items-center gap-3">
-            {/* Bull Board — admins only, matching the server-side guard. */}
-            {user?.role === 'ADMIN' ? (
-              <a
-                href={`${API_URL}/admin/queues`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hidden text-sm text-ink-muted transition-colors hover:text-ink sm:block"
-              >
-                Queues ↗
-              </a>
-            ) : null}
-
-            {user ? (
-              <div className="flex items-center gap-3">
-                <div className="hidden text-right sm:block">
-                  <p className="text-sm font-medium text-ink">{user.name}</p>
-                  <p className="text-xs text-ink-muted">{user.email}</p>
-                </div>
-
-                {user.avatarUrl ? (
-                  <img
-                    src={user.avatarUrl}
-                    alt=""
-                    // referrerPolicy is required or Google's CDN returns 403 for
-                    // avatars requested from a different origin.
-                    referrerPolicy="no-referrer"
-                    className="size-8 rounded-full ring-1 ring-line-strong"
+      {/* ── Main pane ────────────────────────────────────────────────────── */}
+      <main className="flex min-w-0 flex-1 flex-col p-3">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface">
+          {composing ? (
+            <ComposePage
+              onClose={() => setComposing(false)}
+              onScheduled={() => {
+                setComposing(false);
+                setView('scheduled');
+                setRefreshKey((k) => k + 1);
+              }}
+            />
+          ) : (
+            <>
+              {/* ── Search bar ─────────────────────────────────────────── */}
+              <div className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
+                <div className="relative flex-1">
+                  <svg
+                    className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-ink-muted"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  >
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+                  </svg>
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search"
+                    aria-label="Search emails"
+                    className="h-11 w-full rounded-pill bg-surface-2 pr-4 pl-11 text-[15px] text-ink outline-none placeholder:text-ink-muted focus:bg-surface-3"
                   />
-                ) : (
-                  <div className="flex size-8 items-center justify-center rounded-full bg-surface-3 text-sm font-medium text-ink-secondary">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-                )}
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => logout.mutate()}
-                  loading={logout.isPending}
-                >
-                  Log out
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-        {/* ═══ Stat tiles ═════════════════════════════════════════════════ */}
-        <section aria-label="Overview" className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          <StatTile
-            label="Scheduled"
-            value={stats.data?.scheduledCount}
-            loading={stats.isLoading}
-            hint={
-              stats.data?.nextSendAt
-                ? `next ${formatRelative(stats.data.nextSendAt)}`
-                : 'nothing queued'
-            }
-          />
-          <StatTile
-            label="Sent"
-            value={stats.data?.sentCount}
-            loading={stats.isLoading}
-            hint={`${formatNumber(stats.data?.sentLastHour ?? 0)} this hour`}
-          />
-          <StatTile
-            label="Failed"
-            value={stats.data?.failedCount}
-            loading={stats.isLoading}
-            tone={stats.data && stats.data.failedCount > 0 ? 'critical' : 'neutral'}
-          />
-          <StatTile
-            label="Senders"
-            value={stats.data?.activeSenders}
-            loading={stats.isLoading}
-            hint={
-              stats.data && stats.data.openCircuits > 0
-                ? `${stats.data.openCircuits} paused`
-                : 'all healthy'
-            }
-            tone={stats.data && stats.data.openCircuits > 0 ? 'warning' : 'neutral'}
-          />
-        </section>
-
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          {/* ═══ Emails ══════════════════════════════════════════════════ */}
-          <div className="lg:col-span-2">
-            <Card>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5">
-                {/* Tabs */}
-                <div
-                  role="tablist"
-                  aria-label="Email views"
-                  className="flex gap-1 rounded-lg bg-surface-2 p-1"
-                >
-                  {(['scheduled', 'sent'] as const).map((value) => (
-                    <button
-                      key={value}
-                      role="tab"
-                      aria-selected={tab === value}
-                      onClick={() => setTab(value)}
-                      className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                        tab === value
-                          ? 'bg-surface-3 text-ink'
-                          : 'text-ink-muted hover:text-ink-secondary'
-                      }`}
-                    >
-                      {value === 'scheduled' ? 'Scheduled' : 'Sent'}
-                    </button>
-                  ))}
                 </div>
 
-                <div className="flex flex-1 items-center justify-end gap-2">
-                  <div className="w-full max-w-56">
-                    <Input
-                      type="search"
-                      placeholder="Search emails…"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      aria-label="Search emails"
-                      className="h-9"
-                    />
-                  </div>
-                  <Button size="sm" onClick={() => setComposeOpen(true)}>
-                    Compose
-                  </Button>
+                <button
+                  onClick={() => setPanelOpen((v) => !v)}
+                  aria-label="Sender health and integrations"
+                  aria-expanded={panelOpen}
+                  title="Sender health and integrations"
+                  className={`rounded-md p-2 transition-colors ${panelOpen ? 'bg-accent-tint text-ink' : 'text-ink-muted hover:bg-surface-2 hover:text-ink'}`}
+                >
+                  <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M3 5h18l-7 8v6l-4 2v-8L3 5z" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+
+                <button
+                  onClick={() => setRefreshKey((k) => k + 1)}
+                  aria-label="Refresh"
+                  title="Refresh"
+                  className="rounded-md p-2 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+                >
+                  <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* ── List + optional side panel ──────────────────────────── */}
+              <div className="flex min-h-0 flex-1">
+                <div className="min-w-0 flex-1 overflow-y-auto">
+                  <EmailList
+                    view={view}
+                    search={search}
+                    onCompose={() => setComposing(true)}
+                    refreshKey={refreshKey}
+                  />
                 </div>
-              </div>
 
-              <div role="tabpanel">
-                <EmailTable
-                  bucket={tab}
-                  search={search}
-                  onCompose={() => setComposeOpen(true)}
-                />
+                {panelOpen ? (
+                  <div className="w-[340px] shrink-0 space-y-3 overflow-y-auto border-l border-line bg-surface-2 p-3">
+                    <SenderHealthPanel />
+                    <SlackConnectCard />
+                  </div>
+                ) : null}
               </div>
-            </Card>
-          </div>
-
-          {/* ═══ Side rail ═══════════════════════════════════════════════ */}
-          <div className="space-y-6">
-            <SenderHealthPanel />
-            <SlackConnectCard />
-          </div>
+            </>
+          )}
         </div>
       </main>
-
-      <ComposeModal open={composeOpen} onClose={() => setComposeOpen(false)} />
     </div>
-  );
-}
-
-function StatTile({
-  label,
-  value,
-  hint,
-  loading,
-  tone = 'neutral',
-}: {
-  label: string;
-  value: number | undefined;
-  hint?: string;
-  loading?: boolean;
-  tone?: 'neutral' | 'warning' | 'critical';
-}) {
-  // No hue available, so an at-risk figure is distinguished by weight and by the
-  // hint beneath it rather than by turning red.
-  const tones = {
-    neutral: 'text-ink',
-    warning: 'text-ink-secondary',
-    critical: 'text-ink-secondary',
-  } as const;
-
-  return (
-    <Card className="px-4 py-3.5">
-      <p className="text-xs text-ink-muted">{label}</p>
-      {loading ? (
-        <Skeleton className="mt-1.5 h-7 w-16" />
-      ) : (
-        // Proportional figures: these are standalone numbers, not a column needing
-        // vertical alignment.
-        <p className={`mt-0.5 text-2xl font-semibold ${tones[tone]}`}>
-          {formatNumber(value ?? 0)}
-        </p>
-      )}
-      {hint ? <p className="mt-0.5 text-xs text-ink-muted">{hint}</p> : null}
-    </Card>
   );
 }

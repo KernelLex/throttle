@@ -18,13 +18,16 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * With no accent hue, hierarchy is carried entirely by contrast: the primary
  * action is white-on-black and everything else recedes toward the surface.
  */
+/**
+ * The Figma uses exactly two button shapes: a solid green fill and a green
+ * outline pill. Everything else is a quiet ghost.
+ */
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-plane hover:bg-accent-hover active:bg-accent-muted font-medium',
-  secondary: 'bg-surface-3 text-ink hover:bg-surface-4 ring-1 ring-inset ring-line-strong',
+  primary: 'bg-accent text-white hover:bg-accent-hover active:bg-accent-active',
+  secondary:
+    'bg-transparent text-accent ring-1 ring-inset ring-accent hover:bg-accent-tint active:bg-accent-tint-strong',
   ghost: 'bg-transparent text-ink-secondary hover:bg-surface-2 hover:text-ink',
-  // Destructive is an OUTLINE, not a fill. Without red to signal danger, the
-  // distinction has to come from form — and the confirming copy on the button.
-  danger: 'bg-transparent text-ink ring-1 ring-inset ring-ink-muted hover:bg-surface-3',
+  danger: 'bg-transparent text-fail-ink ring-1 ring-inset ring-fail-ink hover:bg-fail-bg',
 };
 
 const SIZES: Record<ButtonSize, string> = {
@@ -58,7 +61,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       // state — the label is unchanged and the spinner is decorative.
       aria-busy={loading || undefined}
       className={cn(
-        'inline-flex items-center justify-center rounded-lg font-medium',
+        'inline-flex items-center justify-center rounded-pill font-medium',
         'transition-all duration-200 ease-out active:scale-[0.98]',
         'disabled:cursor-not-allowed disabled:opacity-50',
         VARIANTS[variant],
