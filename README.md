@@ -7,6 +7,23 @@ of it.
 
 Built for the ReachInbox full-stack assignment.
 
+---
+
+### [Watch the full tour with sound - brag.mp4](brag-output/brag.mp4) &nbsp;&middot;&nbsp; 60 seconds
+
+![Throttle - product tour](brag-output/brag.gif)
+
+*Looping preview above. The [MP4](brag-output/brag.mp4) carries the soundtrack - GitHub
+strips `<video>` and `<audio>` tags from READMEs, so sound only plays on the file itself.*
+
+**What the tour covers:** Google login &rarr; dashboard &rarr; compose with CSV upload
+&rarr; **the Delivery Planner** &rarr; the shared `planSchedule()` &rarr; sending with
+Ethereal previews &rarr; hitting the rate limit and the **live Slack alert** &rarr; the
+**circuit breaker rerouting a failed sender** &rarr; surviving a restart &rarr;
+Elasticsearch search and the live queue dashboard.
+
+---
+
 ### 🔗 Live
 
 | | |
@@ -29,19 +46,6 @@ preview URL and never delivers them — every Sent row links to the real message
 > 14-day trial). The indexing and search code is complete and is demonstrated against a
 > real local cluster in the video. The dashboard labels the degraded mode rather than
 > hiding it. See [docs/08-ELASTICSEARCH.md](docs/08-ELASTICSEARCH.md).
-
-## Watch it
-
-[![Throttle — 20 second overview](brag-output/brag.jpg)](brag-output/brag.mp4)
-
-**[▶ brag.mp4](brag-output/brag.mp4)** · 20 seconds · what it does, why the forecast
-is trustworthy, and what happens when the rate limit hits and the process dies.
-
-> GitHub does not play video inline in a README, so the image above links to the
-> file. Click through, or download it from
-> [`brag-output/`](brag-output/).
-
----
 
 ```mermaid
 graph TB

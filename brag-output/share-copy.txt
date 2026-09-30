@@ -1,9 +1,14 @@
-Built Throttle: an email scheduler that shows you the delivery forecast before you
-send anything. The chart isn't an estimate of the schedule — the same planSchedule()
+Built Throttle — an email scheduler that shows you the delivery forecast before you
+send anything. The chart isn't an estimate of the schedule: the same planSchedule()
 function draws it in the browser and writes it on the server.
 
-1,000 emails across 3 senders at 50/hour: 7 hour windows, finishes in 6h 40m. Hit the
-rate limit and the surplus rolls into the next window in order. Kill the process
-mid-campaign and the schedule survives.
+1,000 emails across 3 senders at 50/hour → 7 hour windows, finishing in 6h 40m. Hit
+the hourly limit and the surplus rolls into the next window in order, with one Slack
+alert per sender per window. Fail a sender five times and its circuit opens, traffic
+reroutes by health score, and it probes its way back. Kill the worker mid-campaign and
+the schedule survives — Postgres is the source of truth, the reconciler rebuilds Redis
+on boot.
 
-Nothing dropped. Nothing sent twice. throttle-delta.vercel.app
+No cron anywhere, not even BullMQ's repeat:. Nothing dropped. Nothing sent twice.
+
+throttle-delta.vercel.app
