@@ -3,6 +3,11 @@
 Read this over the recorded take. **3:56.** Every cue matches what is actually on
 screen, so you can record straight through without watching for surprises.
 
+**A narrated cut already exists** — `demo/throttle-demo-4min-narrated.mp4`, read by
+`en-US-AndrewMultilingualNeural` over a sparse bed. Use this file to record your own
+voice instead; yours will beat the synthesiser. `demo/voiceover-timings.json` holds the
+exact per-line start times that cut uses, which are finer than the section marks below.
+
 Written to **2.5 words a second** and deliberately kept under each slot — roughly 80%
 of the available time. The gaps are intentional. Silence over a chart is fine, and
 rushing is the one thing that will make this sound worse than it is.

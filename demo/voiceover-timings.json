@@ -1,0 +1,121 @@
+{
+  "_comment": "Narration for demo/throttle-demo-4min.mp4, from DEMO-VOICEOVER.md. `at` is the second each line starts, anchored to the section it describes. Long sections are split into separate lines so the pauses fall where the visuals change rather than wherever the synthesiser decides. Run fit.mjs after any edit.",
+  "rate": "+0%",
+  "lines": [
+    {
+      "at": 0.8,
+      "scene": "empty",
+      "text": "This is the same system running locally. The queue is empty. I'm going to fill it, then kill the server while it's working."
+    },
+    {
+      "at": 11.5,
+      "scene": "compose",
+      "text": "Compose takes a subject, a body with merge fields, and a lead list. Ten addresses detected."
+    },
+    {
+      "at": 18.8,
+      "scene": "forecast",
+      "text": "This is the delivery forecast. At one email per sender per hour, ten emails spread across three hour windows. At two an hour, two windows. At fifty, one window, finishing in four seconds."
+    },
+    {
+      "at": 33.2,
+      "scene": "forecast",
+      "text": "That chart is computed by the same function the server uses to write the schedule. The browser and the scheduler can't disagree."
+    },
+    {
+      "at": 43.8,
+      "scene": "scheduled",
+      "text": "Ten jobs scheduled, each with the exact second it goes out, two seconds apart. Nothing has sent yet."
+    },
+    {
+      "at": 54.6,
+      "scene": "queues",
+      "text": "Behind it, the real Bull M Q queues. This is the live queue dashboard, behind admin auth."
+    },
+    {
+      "at": 62.6,
+      "scene": "kill",
+      "text": "Now the part that matters. The campaign is mid-flight, and I'm killing the process."
+    },
+    {
+      "at": 73.0,
+      "scene": "recovery",
+      "text": "Restarting. On boot it runs a recovery pass before consuming anything. A reaper returns jobs stuck mid-send. A reconciler compares Postgres against Redis and re-queues what's missing. Postgres is the source of truth, Redis is the working set."
+    },
+    {
+      "at": 91.4,
+      "scene": "recovery",
+      "text": "And that line says: self-chaining delayed job, not cron."
+    },
+    {
+      "at": 96.2,
+      "scene": "kept",
+      "text": "And it never stopped. Some went out before the kill, the rest are still queued at their original times. Nothing lost, nothing fired early, nothing sent twice."
+    },
+    {
+      "at": 108.8,
+      "scene": "drain",
+      "text": "These are going out now, two seconds apart, in planned order."
+    },
+    {
+      "at": 113.5,
+      "scene": "drain",
+      "text": "Watch the annotations. Deferred one time. Rerouted to Outreach One. Deferred means a job hit a rate limit at send time and was pushed into the next window rather than dropped. Rerouted means the health scorer moved it to a different sender."
+    },
+    {
+      "at": 129.5,
+      "scene": "drain",
+      "text": "None of that was staged. That's the scheduler reacting on a server it had just been restarted on."
+    },
+    {
+      "at": 141.8,
+      "scene": "sent",
+      "text": "All delivered. Every row links to the real message. These go to Ethereal, which renders mail but never delivers it."
+    },
+    {
+      "at": 151.8,
+      "scene": "rate",
+      "text": "Last piece: the rate limiter under load."
+    },
+    {
+      "at": 155.5,
+      "scene": "rate",
+      "text": "One campaign planned properly rarely trips the limiter, because the planner already spread it under the budget. The limiter catches drift. Two campaigns planned independently into the same hour window, each unaware of the other."
+    },
+    {
+      "at": 171.2,
+      "scene": "rate",
+      "text": "So this drops every sender to two an hour and creates exactly that. Campaign A fills the budget. Campaign B finds it gone at send time."
+    },
+    {
+      "at": 181.8,
+      "scene": "rate",
+      "text": "There. Deferred climbing to ten while pending drains. Not dropped, not failed. Deferred into the next window, in order."
+    },
+    {
+      "at": 190.8,
+      "scene": "rate",
+      "text": "That also fires one Slack alert. A Redis guard keyed by sender and hour window means ten blocked jobs produce one message, not ten."
+    },
+    {
+      "at": 207.8,
+      "scene": "tradeoffs",
+      "text": "Finally, the honest part."
+    },
+    {
+      "at": 210.3,
+      "scene": "tradeoffs",
+      "text": "The central trade-off is planning at schedule time instead of reacting at send time. It costs a bigger write up front, but it's what makes that forecast truthful."
+    },
+    {
+      "at": 220.4,
+      "scene": "tradeoffs",
+      "text": "Elasticsearch is optional. Search being down must never stop email sending. And Render blocks outbound S M T P on free plans, which is why this demo is local."
+    },
+    {
+      "at": 233.2,
+      "scene": "outro",
+      "text": "It's all in the README. Thanks for watching."
+    }
+  ]
+}
