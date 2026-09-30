@@ -7,11 +7,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://throttle-api.onrender.com/api/:path*"
+      "destination": "https://throttle-api-9jxt.onrender.com/api/:path*"
     },
     {
       "source": "/admin/:path*",
-      "destination": "https://throttle-api.onrender.com/admin/:path*"
+      "destination": "https://throttle-api-9jxt.onrender.com/admin/:path*"
     }
   ],
   "headers": [

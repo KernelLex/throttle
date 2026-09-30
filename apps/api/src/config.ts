@@ -47,6 +47,11 @@ const PLACEHOLDER_PATTERN = /^change_me/i;
 const secretSchema = (minLength: number) =>
   z
     .string()
+    // Values pasted into a hosting dashboard (Render, Vercel, Fly) routinely pick up
+    // a trailing newline or space. Trimming first turns a baffling
+    // "must be exactly 64 characters" into a successful boot, on a value that really
+    // is 64 characters followed by an invisible newline.
+    .trim()
     .min(minLength, `Must be at least ${minLength} characters`)
     .refine((v) => !(process.env['NODE_ENV'] === 'production' && PLACEHOLDER_PATTERN.test(v)), {
       message:
@@ -62,13 +67,13 @@ const envSchema = z
     ROLE: z.enum(['api', 'worker', 'both']).default('both'),
     API_PORT: intFromEnv(1, 65535).default(4000),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
-    API_BASE_URL: z.string().url(),
-    WEB_BASE_URL: z.string().url(),
+    API_BASE_URL: z.string().trim().url(),
+    WEB_BASE_URL: z.string().trim().url(),
 
     // Datastores
-    DATABASE_URL: z.string().url().startsWith('postgres'),
-    REDIS_URL: z.string().url().startsWith('redis'),
-    ELASTICSEARCH_URL: z.string().url(),
+    DATABASE_URL: z.string().trim().url().startsWith('postgres'),
+    REDIS_URL: z.string().trim().url().startsWith('redis'),
+    ELASTICSEARCH_URL: z.string().trim().url(),
     ELASTICSEARCH_INDEX: z.string().min(1).default('throttle-emails'),
     ELASTICSEARCH_REQUIRED: boolFromEnv,
 
@@ -80,6 +85,7 @@ const envSchema = z
     // wrong-length key fails at first use (mid-send) rather than at boot.
     ENCRYPTION_KEY: z
       .string()
+      .trim()
       .regex(/^[0-9a-f]{64}$/i, 'Must be exactly 64 hexadecimal characters (32 bytes)')
       .refine((v) => !(process.env['NODE_ENV'] === 'production' && PLACEHOLDER_PATTERN.test(v)), {
         message: 'Still set to the .env.example placeholder.',
@@ -88,14 +94,14 @@ const envSchema = z
     JWT_REFRESH_TTL: z.string().default('7d'),
 
     // Google OAuth
-    GOOGLE_CLIENT_ID: z.string().default(''),
-    GOOGLE_CLIENT_SECRET: z.string().default(''),
+    GOOGLE_CLIENT_ID: z.string().trim().default(''),
+    GOOGLE_CLIENT_SECRET: z.string().trim().default(''),
     GOOGLE_ALLOWED_HOSTED_DOMAIN: z.string().default(''),
 
     // Slack OAuth
-    SLACK_CLIENT_ID: z.string().default(''),
-    SLACK_CLIENT_SECRET: z.string().default(''),
-    SLACK_SIGNING_SECRET: z.string().default(''),
+    SLACK_CLIENT_ID: z.string().trim().default(''),
+    SLACK_CLIENT_SECRET: z.string().trim().default(''),
+    SLACK_SIGNING_SECRET: z.string().trim().default(''),
 
     // ── Scheduler tuning (the brief's "must be configurable" values) ────────
     WORKER_CONCURRENCY: intFromEnv(1, 1000).default(5),
