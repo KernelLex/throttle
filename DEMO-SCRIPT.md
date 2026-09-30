@@ -24,7 +24,47 @@ It covers the brief's checklist in order:
 
 ---
 
-## Before you hit record
+## A recorded take already exists
+
+`demo/throttle-demo-4min.mp4` — **3:56, 1920x1080, silent.** Driven against the real
+local stack: real Postgres, Redis and Elasticsearch, a real process kill and restart,
+and the rate limiter genuinely deferring jobs. Nothing on screen is a mock-up.
+
+Voice it over using these marks. They are where each section *starts* in that file:
+
+| Mark | Section | What is on screen |
+|---|---|---|
+| 0:00 | Dashboard | Signed in, Scheduled and Sent in the sidebar |
+| 0:11 | Compose | Subject, body, CSV upload, the detected-address toast |
+| 0:18 | **Delivery forecast** | Hourly limit dragged 1 → 2 → 50; the chart goes 3 windows → 2 → 1 |
+| 0:43 | Send Later | Campaign scheduled |
+| 0:45 | Scheduled tab | The 10 pending jobs with their send times |
+| 0:54 | Bull Board | The real BullMQ delayed jobs |
+| 1:02 | **Restart** | `^C`, dead prompt, then the restart |
+| 1:12 | Recovery | `Running startup recovery…` → `Startup recovery complete` |
+| 1:35 | Still pending | Same jobs, same times, nothing fired early |
+| 1:48 | They send | Rows moving as the campaign fires |
+| 2:21 | **Sent tab** | Rows annotated `deferred 1x`, `rerouted to Outreach One` |
+| 2:31 | **Rate limiting** | `sent … deferred … pending` climbing live |
+| 3:27 | Trade-offs | The closing card |
+
+**Two things the recording does not show**, because both need a signed-in session that
+belongs to you:
+
+1. **The Slack message.** The rate-limit scene shows the deferrals happening and the
+   script confirming Slack is connected to `#all-throttle`, but not the Slack window
+   itself. Either cut to Slack yourself at **2:31**, or say "and that fires a single
+   Slack alert — one per sender per hour window, not one per blocked job" over the
+   counter.
+2. **The Gmail inbox.** Sender rotation is by health score, so the address that lands
+   in a real inbox is not deterministic. Drop the "it's actually in my inbox" line
+   unless you cut to your own inbox.
+
+If you would rather perform it live, the full script below still stands.
+
+---
+
+## Before you hit record (performing it live)
 
 Run everything **locally**. The deployed instance schedules but cannot send — Render
 blocks outbound SMTP on free web services — so the live URL is for showing it

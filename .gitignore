@@ -31,3 +31,6 @@ tmp/
 # Launch-video: keep the deliverables, ignore the 600 intermediate frames.
 brag-output/work/
 brag-output-*/
+
+# Local demo recording — a working file for the submission video, not a source artefact
+demo/throttle-demo-4min.mp4
