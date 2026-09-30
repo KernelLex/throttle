@@ -23,6 +23,12 @@ preview URL and never delivers them — every Sent row links to the real message
 > Hosted on free tiers. The API sleeps after 15 minutes idle, so the **first request may
 > take up to a minute** while it wakes. Nothing is lost while it sleeps: the scheduler
 > reconciles against Postgres on boot and re-spaces any overdue backlog.
+>
+> **Search on the live URL runs the Postgres fallback**, not Elasticsearch — there is no
+> free managed Elasticsearch tier in 2026 (Bonsai starts at $15/mo; Elastic Cloud is a
+> 14-day trial). The indexing and search code is complete and is demonstrated against a
+> real local cluster in the video. The dashboard labels the degraded mode rather than
+> hiding it. See [docs/08-ELASTICSEARCH.md](docs/08-ELASTICSEARCH.md).
 
 ```mermaid
 graph TB

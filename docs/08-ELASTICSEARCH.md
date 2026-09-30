@@ -66,70 +66,93 @@ than by remembering to check.
 
 ## Running it locally
 
+### With Docker
+
 ```bash
-npm run infra:up          # starts Postgres, Redis and Elasticsearch
+npm run infra:up          # Postgres, Redis and Elasticsearch
 npm run es:reindex        # build the index from existing rows
 ```
 
-Verify:
+### Without Docker
+
+Elasticsearch ships as a self-contained archive with its own bundled JDK, so it
+runs on Windows with no Docker and no separate Java install.
+
+1. Download **Elasticsearch 8.x, Windows .zip** from
+   <https://www.elastic.co/downloads/elasticsearch>
+2. Unzip it, then in `config/elasticsearch.yml` add:
+
+```yaml
+# LOCAL DEVELOPMENT ONLY. Disables auth and TLS so the app can connect over
+# plain HTTP on localhost. Never do this on anything reachable from a network.
+xpack.security.enabled: false
+xpack.security.http.ssl.enabled: false
+discovery.type: single-node
+```
+
+3. Cap the heap so it does not take a gigabyte and a half — create
+   `config/jvm.options.d/heap.options`:
+
+```
+-Xms512m
+-Xmx512m
+```
+
+4. Run `bin\elasticsearch.bat`, then in another terminal:
 
 ```bash
-curl localhost:4000/readyz          # elasticsearch: "ok"
-curl localhost:9200/_cat/indices    # throttle-emails should appear
+curl localhost:9200        # should return cluster info
+npm run es:reindex -w @throttle/api
 ```
+
+`.env` already points at `http://localhost:9200`, so nothing else changes.
 
 ---
 
-## Hosting it free (for the deployed app)
+## Hosting it (what is actually free in 2026)
 
-The deployed stack has no Elasticsearch, so search currently runs the Postgres
-fallback. To make it real, add a free hosted cluster.
+**The deployed app does not have an Elasticsearch cluster.** Search there runs the
+documented Postgres fallback, and the dashboard says so rather than silently
+returning worse results.
 
-### Bonsai — the recommended option
+That is a deliberate choice, because the free options all have a catch:
 
-Free tier: 10,000 documents, 35 MB. Comfortably enough for a demo.
+| Option | Cost | Catch |
+|---|---|---|
+| **Elastic Cloud** | Free **14-day trial**, no card | Genuine Elasticsearch, zero code change — but expires |
+| **Aiven OpenSearch** | Free **forever** (1 GB / 1 GB) | Not Elasticsearch, and see the client note below |
+| **AWS OpenSearch** | Free 12 months | Needs an AWS account and a card |
+| **Bonsai** | **From $15/mo** | No free tier — the Sandbox plan was retired |
+| **Local** | Free | Real Elasticsearch, but not reachable from Render |
 
-1. <https://bonsai.io> → **Sign up** → **Create Cluster**
-2. Plan: **Sandbox (free)**, version **8.x**, region closest to your Render service
-   (Singapore, if you followed `DEPLOYMENT.md`)
-3. Open the cluster → **Credentials** → copy the **full access URL**, which embeds
-   the key and secret:
+### Why OpenSearch is not a drop-in
 
-```
-https://ACCESS_KEY:ACCESS_SECRET@your-cluster-1234.ap-southeast-1.bonsaisearch.net:443
-```
+`@elastic/elasticsearch` v8 performs a **product check**: it verifies an
+`X-Elastic-Product: Elasticsearch` response header and throws
+`ProductNotSupportedError` against anything else. OpenSearch does not send it.
 
-4. **Render → throttle-api → Environment:**
+So switching to Aiven means switching to `@opensearch-project/opensearch` too —
+about half an hour of work, since that client is a fork of the ES 7 client and the
+call shapes are close but not identical.
+
+### To point the deployed app at a cluster
+
+Whichever provider, it is two environment variables on Render:
 
 | Variable | Value |
 |---|---|
-| `ELASTICSEARCH_URL` | the full URL above, credentials included |
-| `ELASTICSEARCH_REQUIRED` | `true` |
+| `ELASTICSEARCH_URL` | full URL including credentials, e.g. `https://user:pass@host:443` |
+| `ELASTICSEARCH_REQUIRED` | `true` once it is genuinely working |
 
-> Setting `ELASTICSEARCH_REQUIRED=true` makes `/readyz` fail if the cluster is
-> unreachable. Do that only once it is genuinely working — while it is `false`,
-> a bad URL degrades quietly instead of taking the service out of rotation.
+> Leave `ELASTICSEARCH_REQUIRED=false` until the cluster is confirmed. While it is
+> `false` a bad URL degrades quietly; set to `true` and `/readyz` fails, which
+> takes the service out of rotation.
 
-5. Save (Render redeploys), then build the index from the Render **Shell**:
+Then rebuild the index from the Render shell:
 
 ```bash
 npm run es:reindex -w @throttle/api
 ```
-
-6. Search in the dashboard. The degraded-mode banner should be gone.
-
-### Alternatives
-
-| Option | Free tier | Note |
-|---|---|---|
-| **Bonsai** | 10k docs, 35 MB, no time limit | Recommended |
-| **Elastic Cloud** | 14-day trial | Then paid — fine for a demo week, not beyond |
-| **Local Docker** | unlimited | Perfect for the demo video; not reachable from Render |
-
-**If you would rather not host it:** demonstrate Elasticsearch running locally in
-the video (`npm run infra:up` gives you a real cluster) and say in the README that
-the deployed instance runs the documented Postgres fallback. That is an honest
-position — the code path is complete either way.
 
 ---
 
@@ -138,7 +161,7 @@ position — the code path is complete either way.
 | Symptom | Cause | Fix |
 |---|---|---|
 | Search works but shows the degraded banner | Cluster unreachable | Check `ELASTICSEARCH_URL`; `curl $ELASTICSEARCH_URL` |
-| `es:reindex` says it cannot connect | Wrong URL, or credentials missing from it | Bonsai's URL must include `key:secret@` |
+| `es:reindex` says it cannot connect | Elasticsearch is not running, or the URL is wrong | Start it locally (see above), or check `ELASTICSEARCH_URL` includes credentials |
 | Reindex finishes but search returns nothing | Index not refreshed | The script forces a refresh; if you indexed by hand, `POST /throttle-emails/_refresh` |
 | `strict_dynamic_mapping_exception` | A field was added to `EmailDocument` but not the mapping | Add it to `INDEX_MAPPING`, delete the index, reindex |
 | Results missing recently-sent email | Indexing queue backed up | Check `/admin/queues` → `search-index` |
