@@ -389,27 +389,49 @@ export function Modal({
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
+  /**
+   * Hold `onClose` in a ref so the effect below can call the latest version WITHOUT
+   * listing it as a dependency.
+   *
+   * THE BUG THIS FIXES: callers almost always pass an inline arrow or a function
+   * declared in their render body, so `onClose` has a new identity on every render.
+   * With `onClose` in the dependency array, the effect re-ran on EVERY render —
+   * including every keystroke in a form inside the modal — and its
+   * `panelRef.current?.focus()` yanked focus out of whatever input was being typed
+   * into. The symptom is having to re-click the field after every single character.
+   *
+   * The ref keeps the handler current while letting the effect depend only on `open`,
+   * so focus is set once when the modal opens and never stolen again.
+   */
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   // Escape to close, and lock body scroll while open. Without the scroll lock the
   // page behind the modal scrolls under it, which feels broken on a long dashboard.
+  //
+  // Depends on `open` ALONE — see the note above.
   useEffect(() => {
     if (!open) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') onCloseRef.current();
     };
 
     document.addEventListener('keydown', onKeyDown);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Move focus into the dialog so keyboard users are not left behind it.
+    // Move focus into the dialog once, on open, so keyboard users are not left
+    // behind it. Runs only when `open` flips, never on a re-render.
     panelRef.current?.focus();
 
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

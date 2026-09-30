@@ -145,8 +145,17 @@ export async function verifyTransport(
  * Provision a throwaway Ethereal mailbox.
  *
  * Ethereal accepts mail and renders it at a preview URL but never delivers it, which
- * is what makes it safe for a scheduler demo — you can send a thousand messages
- * without touching a real inbox.
+ * is what makes it safe to fire a thousand test emails at.
+ *
+ * WHY THIS CALLS THE API DIRECTLY INSTEAD OF nodemailer.createTestAccount()
+ * ------------------------------------------------------------------------
+ * `createTestAccount()` CACHES its result for the lifetime of the process — calling
+ * it three times returns the same mailbox three times. The seed script then hits the
+ * unique constraint on (tenantId, fromEmail) and only one sender was created, which
+ * quietly guts the entire multi-sender story: no rotation to demonstrate, no circuit
+ * breaker rerouting, no per-sender rate limits.
+ *
+ * Posting to the API directly returns a distinct mailbox per call.
  */
 export async function createEtherealAccount(): Promise<{
   smtpHost: string;
@@ -156,7 +165,25 @@ export async function createEtherealAccount(): Promise<{
   smtpSecure: boolean;
   webUrl: string;
 }> {
-  const account = await nodemailer.createTestAccount();
+  const response = await fetch('https://api.nodemailer.com/user', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requestor: 'throttle', version: '1.0.0' }),
+    signal: AbortSignal.timeout(20_000),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Ethereal account provisioning failed (HTTP ${response.status}). ` +
+        'Check your internet connection, or create accounts manually at https://ethereal.email/create',
+    );
+  }
+
+  const account = (await response.json()) as {
+    user: string;
+    pass: string;
+    smtp: { host: string; port: number; secure: boolean };
+  };
 
   return {
     smtpHost: account.smtp.host,

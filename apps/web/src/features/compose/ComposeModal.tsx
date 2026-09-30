@@ -7,7 +7,7 @@
  * running it on literally every keystroke of a number field is wasted work.
  */
 
-import { useDeferredValue, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MAX_LEADS_PER_CAMPAIGN, type PlanSender } from '@throttle/core';
 import { ApiRequestError, api } from '../../lib/api';
@@ -63,6 +63,11 @@ export function ComposeModal({ open, onClose }: ComposeModalProps) {
   const deferredGap = useDeferredValue(gapSeconds);
   const deferredLimit = useDeferredValue(hourlyLimit);
   const deferredStart = useDeferredValue(startAt);
+
+  // Memoised so its identity is stable. Without this a new Date object every render
+  // invalidates DeliveryPlanner's useMemo and re-plans the entire campaign on every
+  // keystroke — invisible at 10 recipients, noticeable at 10,000.
+  const plannedStartAt = useMemo(() => new Date(deferredStart), [deferredStart]);
 
   const planSenders: PlanSender[] = useMemo(
     () =>
@@ -140,10 +145,13 @@ export function ComposeModal({ open, onClose }: ComposeModalProps) {
     idempotencyKeyRef.current = crypto.randomUUID();
   }
 
-  function handleClose(): void {
+  // useCallback so the identity is stable across renders. Modal no longer depends on
+  // this (see the ref note there), but an unstable handler is a latent footgun for
+  // any effect or memo that legitimately does.
+  const handleClose = useCallback((): void => {
     if (schedule.isPending) return; // don't abandon an in-flight submit
     onClose();
-  }
+  }, [schedule.isPending, onClose]);
 
   const canSubmit =
     name.trim().length > 0 &&
@@ -299,7 +307,7 @@ export function ComposeModal({ open, onClose }: ComposeModalProps) {
         <DeliveryPlanner
           recipientCount={deferredRecipientCount}
           senders={planSenders}
-          startAt={new Date(deferredStart)}
+          startAt={plannedStartAt}
           minGapMs={deferredGap * 1000}
         />
       </form>

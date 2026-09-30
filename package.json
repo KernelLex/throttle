@@ -2,7 +2,7 @@
   "name": "throttle",
   "version": "1.0.0",
   "private": true,
-  "description": "Throttle \u2014 production-grade email job scheduler with BullMQ, Redis, Postgres and Elasticsearch",
+  "description": "Throttle — production-grade email job scheduler with BullMQ, Redis, Postgres and Elasticsearch",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -31,7 +31,6 @@
     "vite": "^6.4.3"
   },
   "allowScripts": {
-    "esbuild@0.21.5": true,
     "@prisma/client@6.19.3": true,
     "prisma@6.19.3": true,
     "@prisma/engines@6.19.3": true,
