@@ -28,6 +28,6 @@ apps/api/prisma/migrations/dev.db*
 uploads/
 tmp/
 
-# Launch-video scratch output (regenerated on demand)
-brag-output/
+# Launch-video: keep the deliverables, ignore the 600 intermediate frames.
+brag-output/work/
 brag-output-*/

@@ -1,0 +1,9 @@
+Built Throttle: an email scheduler that shows you the delivery forecast before you
+send anything. The chart isn't an estimate of the schedule — the same planSchedule()
+function draws it in the browser and writes it on the server.
+
+1,000 emails across 3 senders at 50/hour: 7 hour windows, finishes in 6h 40m. Hit the
+rate limit and the surplus rolls into the next window in order. Kill the process
+mid-campaign and the schedule survives.
+
+Nothing dropped. Nothing sent twice. throttle-delta.vercel.app
