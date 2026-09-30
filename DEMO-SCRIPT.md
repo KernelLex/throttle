@@ -34,8 +34,12 @@ Check `http://localhost:4000/readyz` shows all three `ok`.
 4. A terminal running the API, logs visible
 5. A second terminal, in the repo, for the restart
 
-**Prepare a `leads.csv`** with ~30 addresses. Include your own Gmail as the first line
-so you can show a real delivery.
+**The leads file is ready:** `demo/leads.csv`. Your own Gmail is the first line, so the
+first send lands in a real inbox on camera.
+
+It deliberately contains two duplicates and one malformed address, so the upload toast
+reads *"30 addresses detected · 2 duplicates removed · 1 invalid skipped"* rather than a
+bare count — it shows the parser doing real work.
 
 **Turn off notifications.** Nothing kills a demo like a Teams popup.
 
@@ -99,7 +103,8 @@ so you can show a real delivery.
 > browser for instant feedback, then re-parsed server-side, because the browser's count
 > is convenience and never a security boundary."
 
-**Do:** **Upload List** → pick `leads.csv` → point at *"30 email addresses detected"*.
+**Do:** **Upload List** → pick `demo/leads.csv` → point at the toast:
+*"30 addresses detected · 2 duplicates removed · 1 invalid skipped"*.
 
 > "Delay between emails, hourly limit, start time."
 
