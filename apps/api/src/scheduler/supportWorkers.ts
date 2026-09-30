@@ -18,12 +18,8 @@ import { env } from '../config.js';
 import { createLogger } from '../lib/logger.js';
 import { prisma } from '../lib/prisma.js';
 import { bullConnection } from '../lib/redis.js';
-import {
-  deleteEmailDocument,
-  indexEmail,
-  isAvailable,
-  type EmailDocument,
-} from '../search/elasticsearch.js';
+import { deleteEmailDocument, indexEmail, isAvailable } from '../search/elasticsearch.js';
+import { buildDocument, indexCampaign } from '../search/indexer.js';
 import { notify, type SlackBlock } from '../slack/service.js';
 import {
   scheduleMaintenance,
@@ -85,7 +81,8 @@ export function createSearchIndexWorker(): Worker<SearchIndexJobData> {
   const worker = new Worker<SearchIndexJobData>(
     QUEUE_SEARCH_INDEX,
     async (job: Job<SearchIndexJobData>) => {
-      const { emailJobId, operation } = job.data;
+      const { operation } = job.data;
+      const emailJobId = job.data.emailJobId ?? job.data.campaignId ?? 'unknown';
 
       // Skip rather than fail when Elasticsearch is down. Failing would retry-storm
       // an already-struggling cluster, and `npm run es:reindex` can rebuild the index
@@ -95,44 +92,27 @@ export function createSearchIndexWorker(): Worker<SearchIndexJobData> {
         return { skipped: true };
       }
 
+      // Whole-campaign backfill, enqueued at creation so SCHEDULED emails are
+      // searchable straight away rather than only once they have been sent.
+      if (operation === 'campaign') {
+        if (!job.data.campaignId) return { skipped: true };
+        const indexed = await indexCampaign(job.data.campaignId);
+        return { indexed };
+      }
+
+      if (!job.data.emailJobId) return { skipped: true };
+
       if (operation === 'delete') {
-        await deleteEmailDocument(emailJobId);
+        await deleteEmailDocument(job.data.emailJobId);
         return { deleted: true };
       }
 
-      const row = await prisma.emailJob.findUnique({
-        where: { id: emailJobId },
-        include: {
-          campaign: { select: { name: true, subject: true, bodyTemplate: true } },
-          plannedSender: { select: { label: true } },
-        },
-      });
-
-      if (!row) {
-        await deleteEmailDocument(emailJobId);
+      const doc = await buildDocument(job.data.emailJobId);
+      if (!doc) {
+        // The row is gone, so the document should be too.
+        await deleteEmailDocument(job.data.emailJobId);
         return { deleted: true };
       }
-
-      const doc: EmailDocument = {
-        emailJobId: row.id,
-        tenantId: row.tenantId,
-        campaignId: row.campaignId,
-        campaignName: row.campaign.name,
-        recipientEmail: row.recipientEmail,
-        recipientName: row.recipientName,
-        subject: row.campaign.subject,
-        body: row.campaign.bodyTemplate,
-        status: row.status,
-        plannedSenderId: row.plannedSenderId,
-        actualSenderId: row.actualSenderId,
-        senderLabel: row.plannedSender.label,
-        scheduledAt: row.scheduledAt.toISOString(),
-        sentAt: row.sentAt?.toISOString() ?? null,
-        failedAt: row.failedAt?.toISOString() ?? null,
-        lastError: row.lastError,
-        rescheduleCount: row.rescheduleCount,
-        createdAt: row.createdAt.toISOString(),
-      };
 
       await indexEmail(doc);
       return { indexed: true };

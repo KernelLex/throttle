@@ -515,7 +515,7 @@ read-modify-write and lose a state change.
 | Store in a relational DB | ✅ | Postgres + Prisma — [`schema.prisma`](apps/api/prisma/schema.prisma) |
 | BullMQ delayed jobs, **no cron** | ✅ | [`queues/index.ts`](apps/api/src/queues/index.ts) |
 | Multiple senders via Ethereal SMTP | ✅ | [`mailer/`](apps/api/src/mailer/), pooled transports |
-| Elasticsearch indexing & search | ✅ | [`search/elasticsearch.ts`](apps/api/src/search/elasticsearch.ts) + Postgres fallback |
+| Elasticsearch indexing & search | ✅ | [`search/`](apps/api/src/search/) — **scheduled AND sent** indexed, Postgres fallback, [setup](docs/08-ELASTICSEARCH.md) |
 | Live BullMQ dashboard | ✅ | Bull Board at `/admin/queues`, **ADMIN-gated** |
 | Survives restart, correct timing | ✅ | [`scheduler/maintenance.ts`](apps/api/src/scheduler/maintenance.ts) |
 | No duplicates / idempotent | ✅ | Three layers — see above |
@@ -686,3 +686,5 @@ introduced — an earlier version passed vacuously, which is recorded in
 | [04-SECURITY.md](docs/04-SECURITY.md) | Threat model, endpoint-by-endpoint posture |
 | [05-SCALABILITY.md](docs/05-SCALABILITY.md) | Behaviour at 1k / 100k / 1M, and the real bottlenecks |
 | [06-DEVLOG.md](docs/06-DEVLOG.md) | **What broke and how it was fixed** |
+| [07-SETUP-CLOUD.md](docs/07-SETUP-CLOUD.md) | Running against Neon + Redis Cloud without Docker |
+| [08-ELASTICSEARCH.md](docs/08-ELASTICSEARCH.md) | What is indexed and when; free hosted setup |

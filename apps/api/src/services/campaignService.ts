@@ -38,7 +38,7 @@ import type { Prisma } from '@prisma/client';
 import { badRequest, conflict, notFound } from '../lib/errors.js';
 import { createLogger } from '../lib/logger.js';
 import { prisma } from '../lib/prisma.js';
-import { enqueueSendBulk, type SendEmailJobData } from '../queues/index.js';
+import { enqueueSearchIndex, enqueueSendBulk, type SendEmailJobData } from '../queues/index.js';
 
 const log = createLogger('campaign-service');
 
@@ -281,6 +281,12 @@ export async function createCampaign(
       now,
     );
   }
+
+  // Make the SCHEDULED emails searchable immediately. The brief requires both
+  // sent AND scheduled email to be searchable, and indexing only on send would
+  // leave the entire pending backlog invisible. One campaign-level job rather
+  // than one per recipient.
+  await enqueueSearchIndex({ tenantId: params.tenantId, campaignId, operation: 'campaign' });
 
   log.info(
     {

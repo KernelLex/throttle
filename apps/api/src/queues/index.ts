@@ -69,9 +69,16 @@ export interface MaintenanceJobData {
 }
 
 export interface SearchIndexJobData {
-  emailJobId: string;
   tenantId: string;
-  operation: 'upsert' | 'delete';
+  /** Present for a single-document operation. */
+  emailJobId?: string;
+  /**
+   * Present for a whole-campaign backfill. Scheduled emails must be searchable
+   * the moment they are created — not only once they have been sent — so campaign
+   * creation enqueues ONE of these rather than 50,000 single-document jobs.
+   */
+  campaignId?: string;
+  operation: 'upsert' | 'delete' | 'campaign';
 }
 
 export type NotificationKind =
@@ -197,10 +204,10 @@ export async function enqueueSendBulk(
 }
 
 export async function enqueueSearchIndex(data: SearchIndexJobData): Promise<void> {
-  await searchIndexQueue.add('index', data, {
-    // Collapses repeated updates for the same email into one pending job.
-    jobId: `idx:${data.emailJobId}:${data.operation}`,
-  });
+  // A stable jobId collapses repeated updates for the same target into one
+  // pending job — useful when a campaign is created and immediately edited.
+  const key = data.campaignId ?? data.emailJobId ?? 'unknown';
+  await searchIndexQueue.add('index', data, { jobId: `idx:${data.operation}:${key}` });
 }
 
 export async function enqueueNotification(data: NotificationJobData): Promise<void> {
