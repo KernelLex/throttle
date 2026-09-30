@@ -2,13 +2,13 @@
   "name": "throttle",
   "version": "1.0.0",
   "private": true,
-  "description": "Throttle — production-grade email job scheduler with BullMQ, Redis, Postgres and Elasticsearch",
+  "description": "Throttle \u2014 production-grade email job scheduler with BullMQ, Redis, Postgres and Elasticsearch",
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
   "engines": {
-    "node": ">=20.11.0"
+    "node": ">=20.11.0 <23"
   },
   "scripts": {
     "build": "npm run build -w @throttle/core && npm run build -w @throttle/api && npm run build -w @throttle/web",

@@ -32,7 +32,10 @@ services:
     region: singapore
 
     # Build from the monorepo root: core must compile before the API that imports it.
-    buildCommand: npm ci && npm run build -w @throttle/core && npm run build -w @throttle/api
+    # --include=dev is REQUIRED. render.yaml sets NODE_ENV=production, and under that
+    # `npm ci` omits devDependencies — which is where typescript and @types/node live.
+    # Without it the build dies with "Cannot find type definition file for 'node'".
+    buildCommand: npm ci --include=dev && npm run build -w @throttle/core && npm run build -w @throttle/api
     startCommand: npm run start -w @throttle/api
 
     # Render pings this to decide whether the service is healthy. /healthz, not
