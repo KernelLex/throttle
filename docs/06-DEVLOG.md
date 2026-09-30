@@ -317,6 +317,59 @@ its own right, and green health checks say nothing about it.
 
 ---
 
+## 10. Render blocks outbound SMTP, and the alert for it was missing
+
+Two findings from the same test run.
+
+**The platform block.** Every sender on the deployed instance failed identically with
+`Connection timeout` — including a Gmail sender that had authenticated successfully from
+a local machine minutes earlier. Render blocks outbound traffic to SMTP ports 25, 465
+and 587 on free web services, and blocks them *silently*: the connection is dropped
+rather than refused, so the client waits for a response that never arrives. Nothing in
+the application was wrong; the deployed instance simply cannot open an SMTP connection.
+
+Any paid instance unblocks 465 and 587 with no code change. Sending is demonstrated
+locally instead, where it works against both Ethereal and a real Gmail sender.
+
+**What the outage accidentally proved.** It exercised the failure path for real:
+
+```
+Outreach Two     OPEN     fails:5   Connection timeout
+Outreach One     CLOSED   fails:1   Connection timeout
+Outreach Three   CLOSED   fails:1   Connection timeout
+My Gmail         CLOSED   fails:2   Connection timeout
+```
+
+The circuit breaker opened after five consecutive failures, Redis and Postgres agreed on
+the state, and all sixteen queued jobs moved to `RESCHEDULED` rather than failing. The
+never-drop guarantee held under a total sender outage, tested by an unplanned fault
+rather than a staged one.
+
+**The missing alert.** Those sixteen deferrals produced no Slack message.
+
+The alert fires on the per-sender `HOURLY_LIMIT` branch, but execution never reached the
+rate limiter — `selectHealthiestSender()` returned null first, and that branch only
+logged:
+
+```
+All senders unavailable (rate limited or circuit open).
+```
+
+So the single most serious state the scheduler can reach — nothing can send at all — was
+the one condition that stayed silent, while the far less urgent "one sender is busy" was
+surfaced loudly.
+
+**Fix.** A `SENDERS_EXHAUSTED` notification on that branch, debounced per tenant per
+hour window rather than per sender: the condition is one fact about the workspace, so
+alerting per sender would send four messages describing a single outage. The message
+names every sender and its state, because when nothing can send the first question is
+always which ones and why.
+
+Worth generalising. Alerting had been added where a condition was *expected*, not where
+the consequences were worst. The branches worth auditing are the ones that only log.
+
+---
+
 ## Open items
 
 - **The full schedule → send → restart cycle has not been driven end to end.** All code
