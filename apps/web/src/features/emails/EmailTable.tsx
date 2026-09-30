@@ -87,7 +87,7 @@ export function EmailTable({ bucket, search, onCompose }: EmailTableProps) {
               action: (
                 <button
                   onClick={onCompose}
-                  className="text-sm font-medium text-brand-hover hover:underline"
+                  className="text-sm font-medium text-ink hover:underline"
                 >
                   Compose new email
                 </button>
@@ -108,8 +108,8 @@ export function EmailTable({ bucket, search, onCompose }: EmailTableProps) {
     <>
       {/* Honest about degraded search rather than silently returning worse results. */}
       {backend === 'postgres-fallback' && isSearching ? (
-        <div className="border-b border-line bg-warning/5 px-5 py-2">
-          <p className="text-xs text-warning">
+        <div className="border-b border-line bg-surface-2 px-5 py-2">
+          <p className="text-xs text-ink-secondary">
             Elasticsearch is unavailable — showing basic database search. Results are
             unranked and not highlighted.
           </p>
@@ -199,7 +199,7 @@ function EmailRow({ email, bucket }: { email: EmailJobDto; bucket: EmailBucket }
               href={email.previewUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-medium text-brand-hover hover:underline"
+              className="text-xs font-medium text-ink hover:underline"
             >
               View email ↗
             </a>
@@ -207,7 +207,7 @@ function EmailRow({ email, bucket }: { email: EmailJobDto; bucket: EmailBucket }
 
           {email.lastError && email.status === 'FAILED' ? (
             <span
-              className="max-w-[24ch] truncate text-xs text-critical"
+              className="max-w-[24ch] truncate text-xs text-ink-muted"
               title={email.lastError}
             >
               {email.lastError}

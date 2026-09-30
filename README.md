@@ -7,28 +7,116 @@ of it.
 
 Built for the ReachInbox full-stack assignment.
 
-**Live:** <https://throttle-delta.vercel.app> · sign in with any Google account —
-each one gets its own isolated workspace with three working Ethereal senders
-provisioned automatically.
+### 🔗 Live
 
+| | |
+|---|---|
+| **Dashboard** | **<https://throttle-delta.vercel.app>** |
+| API | <https://throttle-api-9jxt.onrender.com/healthz> |
+| Queue dashboard | `/admin/queues` — requires an ADMIN session |
+
+**Sign in with any Google account.** Each account gets its own isolated workspace with
+three working Ethereal senders provisioned automatically, so there is nothing to
+configure before scheduling. Emails are sent to Ethereal, which renders them at a
+preview URL and never delivers them — every Sent row links to the real message.
+
+> Hosted on free tiers. The API sleeps after 15 minutes idle, so the **first request may
+> take up to a minute** while it wakes. Nothing is lost while it sleeps: the scheduler
+> reconciles against Postgres on boot and re-spaces any overdue backlog.
+
+```mermaid
+graph TB
+    subgraph browser["🌐 Browser"]
+        UI["React dashboard<br/><i>throttle-delta.vercel.app</i>"]
+    end
+
+    subgraph vercel["▲ Vercel"]
+        CDN["Static assets<br/>+ /api proxy rewrite"]
+    end
+
+    subgraph render["☁️ Render — ROLE=both"]
+        API["Express API"]
+        WORKER["BullMQ workers<br/><i>concurrency 3</i>"]
+    end
+
+    subgraph data["💾 Data — all Singapore"]
+        PG[("Postgres · Neon<br/><b>source of truth</b>")]
+        REDIS[("Redis Cloud<br/>delayed jobs · counters<br/>circuit state")]
+        ES[("Elasticsearch<br/><i>derived · optional</i>")]
+    end
+
+    subgraph ext["📤 External"]
+        SMTP["Ethereal SMTP<br/><i>3 senders</i>"]
+        SLACK["Slack<br/><i>rate-limit alerts</i>"]
+        GOOGLE["Google OAuth"]
+    end
+
+    CORE{{"<b>@throttle/core</b><br/>planSchedule&lpar;&rpar;<br/><i>imported by BOTH sides</i>"}}
+
+    UI -->|"same-origin<br/>httpOnly cookies"| CDN
+    CDN -->|"/api/*"| API
+    UI -.->|"live forecast"| CORE
+    API -.->|"real schedule"| CORE
+
+    API -->|"campaign + jobs<br/>one transaction"| PG
+    API -->|"addBulk, delayed"| REDIS
+    API --> GOOGLE
+
+    REDIS -->|"job due"| WORKER
+    WORKER -->|"1 · atomic claim"| PG
+    WORKER -->|"2 · Lua rate limit<br/>3 · circuit breaker"| REDIS
+    WORKER -->|"4 · send"| SMTP
+    WORKER -->|"limit hit<br/><i>debounced</i>"| SLACK
+    WORKER -.->|"async index"| ES
+
+    PG -.->|"reconciler rebuilds<br/>on every boot"| REDIS
+
+    classDef core fill:#4338ca,stroke:#818cf8,stroke-width:2px,color:#fff
+    classDef store fill:#1c1c26,stroke:#3987e5,color:#fff
+    classDef proc fill:#1c1c26,stroke:#199e70,color:#fff
+    class CORE core
+    class PG,REDIS,ES store
+    class API,WORKER proc
 ```
-┌──────────┐   POST /campaigns   ┌─────────────┐   delayed jobs   ┌────────┐
-│  React   │ ──────────────────▶ │   Express   │ ───────────────▶ │ BullMQ │
-│ dashboard│ ◀────────────────── │     API     │                  │ +Redis │
-└──────────┘    typed client     └─────────────┘                  └────┬───┘
-      │                                 │                              │
-      │      ┌──────────────────────────┴──────────┐                   ▼
-      │      ▼                                     ▼             ┌──────────┐
-      │  ┌────────┐                         ┌──────────────┐     │  Worker  │
-      │  │Postgres│◀── source of truth      │Elasticsearch │     │ (N procs)│
-      │  └────────┘                         │  (derived)   │     └────┬─────┘
-      │                                     └──────────────┘          │
-      │                                                               ▼
-      └───────────── planSchedule() ◀── shared package ──▶      SMTP (Ethereal)
-                     @throttle/core                                   │
-                                                                      ▼
-                                                              Slack (rate-limit
-                                                               + circuit alerts)
+
+> **Two arrows carry most of the design.** `planSchedule()` is imported by the browser
+> *and* the server, so the forecast a user sees is produced by the function that does
+> the scheduling. And Postgres rebuilds Redis on every boot, which is why a restart —
+> or a wiped Redis — loses nothing.
+
+### The send pipeline
+
+```mermaid
+sequenceDiagram
+    participant Q as BullMQ
+    participant W as Worker
+    participant R as Redis (Lua)
+    participant P as Postgres
+    participant S as SMTP
+
+    Q->>W: job due
+    W->>P: load job + campaign + senders
+    W->>R: score senders (budget × reliability)
+    Note over W,R: open circuit ⇒ reroute at pickup
+
+    W->>R: acquireSendSlot() — ATOMIC
+    alt over hourly limit
+        R-->>W: denied + retryAfterMs
+        W->>Q: moveToDelayed(next window)
+        Note over W,Q: no attempt consumed —<br/>throttling is not failure
+        W->>S: (nothing sent)
+    else slot granted
+        R-->>W: granted
+        W->>P: UPDATE ... WHERE status IN (...)<br/>RETURNING id
+        alt zero rows
+            Note over W,P: another worker owns it —<br/>return cleanly, release slot
+        else claimed
+            W->>S: send
+            S-->>W: messageId + preview URL
+            W->>P: status = SENT
+            W->>R: record outcome → circuit state
+        end
+    end
 ```
 
 ---

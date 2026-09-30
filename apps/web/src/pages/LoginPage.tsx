@@ -33,8 +33,8 @@ export function LoginPage() {
       <div className="w-full max-w-sm">
         {/* ── Brand ──────────────────────────────────────────────────────── */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-brand">
-            <svg className="size-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-accent">
+            <svg className="size-6 text-plane" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M13 2L4.5 12.5h6L11 22l8.5-10.5h-6L13 2z" strokeLinejoin="round" />
             </svg>
           </div>
@@ -45,7 +45,7 @@ export function LoginPage() {
         </div>
 
         {/* ── Sign-in card ───────────────────────────────────────────────── */}
-        <div className="rounded-xl bg-surface p-6 ring-hairline">
+        <div className="rounded-2xl bg-surface p-7 ring-hairline">
           <h2 className="text-sm font-medium text-ink">Sign in to continue</h2>
           <p className="mt-1 text-sm text-ink-muted">
             Use your Google account. The first person in a workspace becomes its
@@ -57,7 +57,7 @@ export function LoginPage() {
             // top-level redirect so the browser lands on Google's own origin.
             <a
               href={api.auth.googleLoginUrl('/dashboard')}
-              className="mt-5 flex h-11 w-full items-center justify-center gap-3 rounded-md bg-white font-medium text-[#1f1f1f] transition-opacity hover:opacity-90"
+              className="mt-6 flex h-12 w-full items-center justify-center gap-3 rounded-xl bg-accent font-medium text-plane transition-all duration-200 hover:bg-accent-hover active:scale-[0.99]"
             >
               <svg className="size-5" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
@@ -68,8 +68,8 @@ export function LoginPage() {
               Continue with Google
             </a>
           ) : (
-            <div className="mt-5 rounded-md bg-warning/10 px-4 py-3 ring-1 ring-warning/30">
-              <p className="text-sm font-medium text-warning">Google sign-in is not configured</p>
+            <div className="mt-5 rounded-lg bg-surface-2 px-4 py-3 ring-1 ring-line-strong">
+              <p className="text-sm font-medium text-ink">Google sign-in is not configured</p>
               <p className="mt-1 text-xs text-ink-muted">
                 Set <code className="font-mono">GOOGLE_CLIENT_ID</code> and{' '}
                 <code className="font-mono">GOOGLE_CLIENT_SECRET</code> in your{' '}

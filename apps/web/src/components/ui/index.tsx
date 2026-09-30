@@ -40,7 +40,7 @@ export function Card({
 }: { className?: string; children: ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('rounded-lg bg-surface ring-hairline', className)}
+      className={cn('rounded-xl bg-surface ring-hairline', className)}
       {...props}
     >
       {children}
@@ -101,7 +101,7 @@ function FieldWrapper({ label, hint, error, required, children }: FieldWrapperPr
         <label htmlFor={id} className="block text-sm font-medium text-ink-secondary">
           {label}
           {required ? (
-            <span className="ml-0.5 text-critical" aria-hidden="true">
+            <span className="ml-0.5 text-ink-muted" aria-hidden="true">
               *
             </span>
           ) : null}
@@ -111,7 +111,7 @@ function FieldWrapper({ label, hint, error, required, children }: FieldWrapperPr
       {children(id, describedBy)}
 
       {error ? (
-        <p id={errorId} role="alert" className="text-sm text-critical">
+        <p id={errorId} role="alert" className="text-sm text-ink-secondary">
           {error}
         </p>
       ) : hint ? (
@@ -126,7 +126,7 @@ function FieldWrapper({ label, hint, error, required, children }: FieldWrapperPr
 const fieldBase =
   'w-full rounded-md bg-surface-2 px-3 text-sm text-ink placeholder:text-ink-muted ' +
   'ring-1 ring-inset ring-line-strong transition-colors ' +
-  'focus:ring-2 focus:ring-brand focus:outline-none ' +
+  'focus:ring-[1.5px] focus:ring-ink-secondary focus:outline-none ' +
   'disabled:cursor-not-allowed disabled:opacity-50';
 
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> {
@@ -148,7 +148,7 @@ export function Input({ label, hint, error, className, ...props }: InputProps) {
           id={id}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
-          className={cn(fieldBase, 'h-10', error && 'ring-critical', className)}
+          className={cn(fieldBase, 'h-10', error && 'ring-ink-muted', className)}
           {...props}
         />
       )}
@@ -176,7 +176,7 @@ export function Textarea({ label, hint, error, className, ...props }: TextareaPr
           id={id}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
-          className={cn(fieldBase, 'min-h-28 py-2.5 leading-relaxed', error && 'ring-critical', className)}
+          className={cn(fieldBase, 'min-h-28 py-2.5 leading-relaxed', error && 'ring-ink-muted', className)}
           {...props}
         />
       )}
@@ -202,7 +202,7 @@ export function Select({ label, hint, error, className, children, ...props }: Se
         <select
           id={id}
           aria-describedby={describedBy}
-          className={cn(fieldBase, 'h-10', error && 'ring-critical', className)}
+          className={cn(fieldBase, 'h-10', error && 'ring-ink-muted', className)}
           {...props}
         >
           {children}
@@ -223,20 +223,16 @@ export function Select({ label, hint, error, className, children, ...props }: Se
  * green dot are the same dot to a meaningful slice of users. The label is the
  * accessible channel; the colour is reinforcement.
  */
-const STATUS_STYLES: Record<EmailStatus, { label: string; className: string }> = {
-  SCHEDULED: { label: 'Scheduled', className: 'bg-series-1/15 text-series-1 ring-series-1/30' },
-  QUEUED: { label: 'Queued', className: 'bg-series-1/15 text-series-1 ring-series-1/30' },
-  SENDING: { label: 'Sending', className: 'bg-warning/15 text-warning ring-warning/30' },
-  SENT: { label: 'Sent', className: 'bg-good/15 text-good ring-good/30' },
-  FAILED: { label: 'Failed', className: 'bg-critical/15 text-critical ring-critical/30' },
-  CANCELLED: {
-    label: 'Cancelled',
-    className: 'bg-ink-muted/15 text-ink-muted ring-ink-muted/30',
-  },
-  RESCHEDULED: {
-    label: 'Rescheduled',
-    className: 'bg-serious/15 text-serious ring-serious/30',
-  },
+const STATUS_STYLES: Record<EmailStatus, { label: string; glyph: string; className: string }> = {
+  // Brightness encodes progress: dim = waiting, bright = done. The glyph and the
+  // label carry the actual meaning, so nothing depends on the shade being read.
+  SCHEDULED: { label: 'Scheduled', glyph: '○', className: 'text-ink-secondary ring-line-strong' },
+  QUEUED: { label: 'Queued', glyph: '◔', className: 'text-ink-secondary ring-line-strong' },
+  SENDING: { label: 'Sending', glyph: '◐', className: 'text-ink ring-ink-faint' },
+  SENT: { label: 'Sent', glyph: '●', className: 'text-ink ring-ink-muted bg-surface-4' },
+  FAILED: { label: 'Failed', glyph: '✕', className: 'text-ink-muted ring-ink-faint' },
+  CANCELLED: { label: 'Cancelled', glyph: '—', className: 'text-ink-faint ring-line' },
+  RESCHEDULED: { label: 'Deferred', glyph: '↻', className: 'text-ink-secondary ring-line-strong' },
 };
 
 export function StatusBadge({ status }: { status: EmailStatus }) {
@@ -244,10 +240,13 @@ export function StatusBadge({ status }: { status: EmailStatus }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
         style.className,
       )}
     >
+      <span aria-hidden="true" className="text-[10px] leading-none">
+        {style.glyph}
+      </span>
       {style.label}
     </span>
   );
@@ -264,10 +263,10 @@ export function Badge({
 }) {
   const tones = {
     neutral: 'bg-surface-3 text-ink-secondary ring-line-strong',
-    good: 'bg-good/15 text-good ring-good/30',
-    warning: 'bg-warning/15 text-warning ring-warning/30',
-    critical: 'bg-critical/15 text-critical ring-critical/30',
-    brand: 'bg-brand/15 text-brand-hover ring-brand/30',
+    good: 'bg-surface-4 text-ink ring-ink-faint',
+    warning: 'bg-surface-3 text-ink-secondary ring-ink-faint',
+    critical: 'bg-transparent text-ink-muted ring-ink-faint',
+    brand: 'bg-surface-3 text-ink ring-line-strong',
   } as const;
 
   return (
@@ -288,7 +287,7 @@ export function Badge({
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('skeleton rounded', className)} aria-hidden="true" />;
+  return <div className={cn('skeleton rounded-md', className)} aria-hidden="true" />;
 }
 
 export function TableSkeleton({ rows = 5, columns = 4 }: { rows?: number; columns?: number }) {
@@ -356,7 +355,7 @@ export function ErrorState({
             action: (
               <button
                 onClick={onRetry}
-                className="text-sm font-medium text-brand-hover hover:underline"
+                className="text-sm font-medium text-ink hover:underline"
               >
                 Try again
               </button>
@@ -451,7 +450,7 @@ export function Modal({
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          'animate-in relative my-8 w-full rounded-xl bg-surface shadow-2xl ring-hairline focus:outline-none',
+          'animate-in relative my-8 w-full rounded-2xl bg-surface shadow-2xl ring-hairline-strong focus:outline-none',
           widths[size],
         )}
       >
@@ -517,8 +516,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({ toast }), [toast]);
 
   const tones = {
-    success: 'ring-good/40 text-good',
-    error: 'ring-critical/40 text-critical',
+    success: 'ring-ink-muted text-ink',
+    error: 'ring-ink-faint text-ink-secondary',
     info: 'ring-line-strong text-ink-secondary',
   } as const;
 

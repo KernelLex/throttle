@@ -51,8 +51,8 @@ export function DashboardPage() {
       <header className="sticky top-0 z-40 border-b border-line bg-plane/85 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-brand">
-              <svg className="size-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <div className="flex size-8 items-center justify-center rounded-[10px] bg-accent">
+              <svg className="size-4 text-plane" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M13 2L4.5 12.5h6L11 22l8.5-10.5h-6L13 2z" strokeLinejoin="round" />
               </svg>
             </div>
@@ -232,10 +232,12 @@ function StatTile({
   loading?: boolean;
   tone?: 'neutral' | 'warning' | 'critical';
 }) {
+  // No hue available, so an at-risk figure is distinguished by weight and by the
+  // hint beneath it rather than by turning red.
   const tones = {
     neutral: 'text-ink',
-    warning: 'text-warning',
-    critical: 'text-critical',
+    warning: 'text-ink-secondary',
+    critical: 'text-ink-secondary',
   } as const;
 
   return (

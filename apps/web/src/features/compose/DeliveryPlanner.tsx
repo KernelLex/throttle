@@ -50,21 +50,26 @@ import {
 import { formatDateTime, formatNumber, formatTime } from '../../lib/utils';
 import { Badge } from '../../components/ui';
 
-/** Validated categorical slots, in fixed order. See the note in index.css. */
+/**
+ * Monochrome series ramp, brightest first. With no hue available, LIGHTNESS is the
+ * only channel distinguishing one sender from another — so these four steps are
+ * spaced to stay >= 1.7:1 apart in contrast while each clearing 3:1 against the
+ * chart surface. See the measurement table in index.css.
+ */
 const SERIES_COLORS = [
   'var(--color-series-1)',
   'var(--color-series-2)',
   'var(--color-series-3)',
   'var(--color-series-4)',
-  'var(--color-series-5)',
-  'var(--color-series-6)',
-  'var(--color-series-7)',
-  'var(--color-series-8)',
 ] as const;
 
 /**
- * Past eight senders we stop assigning hues and fold the rest into "Other".
- * Generating a ninth colour would break the validated separation guarantees.
+ * Four is the ceiling, not a preference.
+ *
+ * The usable span runs from "readable on the surface" (3:1) up to white (18.7:1),
+ * and only four steps fit inside it at >= 1.7:1 apart. A fifth would be
+ * indistinguishable from its neighbour, so a fifth sender folds into "Other"
+ * rather than being handed an invented shade nobody can tell apart.
  */
 const MAX_SERIES = SERIES_COLORS.length;
 
@@ -106,6 +111,12 @@ export function DeliveryPlanner({
     [plan.senders],
   );
 
+  /** Senders beyond the ramp's capacity, reported honestly rather than hidden. */
+  const overflowCount = useMemo(
+    () => Math.max(0, plan.senders.filter((s) => s.assigned > 0).length - MAX_SERIES),
+    [plan.senders],
+  );
+
   const chartData: ChartRow[] = useMemo(
     () =>
       plan.windows.map((window) => {
@@ -135,8 +146,8 @@ export function DeliveryPlanner({
 
   if (senders.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-warning/40 bg-warning/5 px-5 py-8 text-center">
-        <p className="text-sm text-warning">
+      <div className="rounded-lg border border-dashed border-ink-faint bg-surface-2 px-5 py-8 text-center">
+        <p className="text-sm text-ink-secondary">
           No active senders. Add a sender before scheduling.
         </p>
       </div>
@@ -209,13 +220,13 @@ export function DeliveryPlanner({
             {plan.totalCapacityPerHour > 0 ? (
               <ReferenceLine
                 y={plan.totalCapacityPerHour}
-                stroke="var(--color-warning)"
+                stroke="var(--color-ink-faint)"
                 strokeDasharray="4 4"
                 strokeWidth={1}
                 label={{
                   value: `capacity ${formatNumber(plan.totalCapacityPerHour)}/hr`,
                   position: 'insideTopRight',
-                  fill: 'var(--color-warning)',
+                  fill: 'var(--color-ink-muted)',
                   fontSize: 10,
                 }}
               />
@@ -265,6 +276,12 @@ export function DeliveryPlanner({
             </span>
           </li>
         ))}
+        {overflowCount > 0 ? (
+          <li className="flex items-center gap-2 text-xs text-ink-muted">
+            <span className="size-2.5 shrink-0 rounded-sm bg-ink-faint" aria-hidden="true" />
+            <span>+{overflowCount} more (not charted)</span>
+          </li>
+        ) : null}
       </ul>
 
       {/* ── Warnings ──────────────────────────────────────────────────────── */}
@@ -272,7 +289,7 @@ export function DeliveryPlanner({
         <ul className="space-y-1.5 border-t border-line px-5 py-3">
           {plan.warnings.map((warning) => (
             <li key={`${warning.code}-${warning.senderId ?? ''}`} className="flex gap-2 text-xs">
-              <span className="mt-0.5 shrink-0 text-warning" aria-hidden="true">
+              <span className="mt-0.5 shrink-0 text-ink-muted" aria-hidden="true">
                 ⚠
               </span>
               <span className="text-ink-muted">{warning.message}</span>

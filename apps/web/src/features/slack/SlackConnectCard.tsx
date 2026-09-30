@@ -71,7 +71,7 @@ export function SlackConnectCard() {
         ) : status.data?.connected ? (
           <div className="space-y-3">
             <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 text-good" aria-hidden="true">
+              <span className="mt-0.5 text-ink" aria-hidden="true">
                 ●
               </span>
               <div className="min-w-0">

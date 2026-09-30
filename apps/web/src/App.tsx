@@ -17,7 +17,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <svg className="size-6 animate-spin text-brand" viewBox="0 0 24 24" fill="none">
+          <svg className="size-6 animate-spin text-ink-secondary" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
             <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
           </svg>

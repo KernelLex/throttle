@@ -214,7 +214,7 @@ export function ComposeModal({ open, onClose }: ComposeModalProps) {
         <div className="space-y-1.5">
           <span className="block text-sm font-medium text-ink-secondary">
             Leads
-            <span className="ml-0.5 text-critical" aria-hidden="true">*</span>
+            <span className="ml-0.5 text-ink-muted" aria-hidden="true">*</span>
           </span>
 
           <div className="rounded-md border border-dashed border-line-strong bg-surface-2/40 px-4 py-5">
@@ -267,7 +267,7 @@ export function ComposeModal({ open, onClose }: ComposeModalProps) {
             )}
           </div>
           {firstError('recipients') ? (
-            <p role="alert" className="text-sm text-critical">{firstError('recipients')}</p>
+            <p role="alert" className="text-sm text-ink-secondary">{firstError('recipients')}</p>
           ) : null}
         </div>
 

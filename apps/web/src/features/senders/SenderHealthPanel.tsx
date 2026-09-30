@@ -25,25 +25,15 @@ import {
   useToast,
 } from '../../components/ui';
 
+/**
+ * Circuit state is carried by the GLYPH and the LABEL. Brightness only reinforces
+ * the ordering (healthy is bright, paused is dim) — nothing here requires the
+ * viewer to interpret a shade.
+ */
 const CIRCUIT_PRESENTATION = {
-  CLOSED: {
-    icon: '●',
-    label: 'Healthy',
-    text: 'text-good',
-    bar: 'bg-good',
-  },
-  HALF_OPEN: {
-    icon: '◐',
-    label: 'Probing',
-    text: 'text-warning',
-    bar: 'bg-warning',
-  },
-  OPEN: {
-    icon: '■',
-    label: 'Paused',
-    text: 'text-critical',
-    bar: 'bg-critical',
-  },
+  CLOSED: { icon: '●', label: 'Healthy', text: 'text-ink', bar: 'bg-ink' },
+  HALF_OPEN: { icon: '◐', label: 'Probing', text: 'text-ink-secondary', bar: 'bg-ink-secondary' },
+  OPEN: { icon: '■', label: 'Paused', text: 'text-ink-muted', bar: 'bg-ink-muted' },
 } as const;
 
 export function SenderHealthPanel() {
@@ -177,13 +167,13 @@ function SenderRow({
         {sender.failedTotal > 0 ? (
           <span>
             Failed{' '}
-            <span className="tabular text-critical">{formatNumber(sender.failedTotal)}</span>
+            <span className="tabular text-ink-secondary">{formatNumber(sender.failedTotal)}</span>
           </span>
         ) : null}
         {sender.recentFailureRate > 0 ? (
           <span>
             Failure rate{' '}
-            <span className="tabular text-serious">
+            <span className="tabular text-ink-secondary">
               {(sender.recentFailureRate * 100).toFixed(0)}%
             </span>
           </span>
@@ -193,8 +183,8 @@ function SenderRow({
       {/* Explain the pause, and offer the override — waiting out a cooldown after
           fixing credentials is pure friction. */}
       {sender.circuitState === 'OPEN' ? (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md bg-critical/10 px-3 py-2 ring-1 ring-critical/25">
-          <p className="text-xs text-critical">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-3 px-3 py-2 ring-1 ring-ink-faint">
+          <p className="text-xs text-ink-secondary">
             Paused after {sender.consecutiveFailures} consecutive failures.
             {sender.retryAt ? ` Retrying ${formatRelative(sender.retryAt)}.` : ''}
           </p>
